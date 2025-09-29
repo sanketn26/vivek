@@ -1,17 +1,17 @@
-# 🤖 Buttler
+# 🤖 Vivek
 
 > **Privacy-first collaborative AI brain design for intelligent coding assistance.**
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ollama](https://img.shields.io/badge/Powered%20by-Ollama-orange)](https://ollama.com)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-red.svg)](https://github.com/yourusername/buttler)
+[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-red.svg)](https://github.com/yourusername/Vivek)
 
-Buttler is a revolutionary coding assistant built on **privacy-first collaborative AI brain design**. Two+ specialized local LLMs work together in intelligent collaboration to deliver superior code generation, thoughtful review, and contextual assistance—all while keeping your code completely private on your machine.
+Vivek is a revolutionary coding assistant built on **privacy-first collaborative AI brain design**. Two+ specialized local LLMs work together in intelligent collaboration to deliver superior code generation, thoughtful review, and contextual assistance—all while keeping your code completely private on your machine.
 
 ## 🧠 Collaborative AI Brain Design
 
-Traditional AI assistants use one model trying to handle everything. Buttler's **collaborative brain architecture** uses **cognitive specialization**:
+Traditional AI assistants use one model trying to handle everything. Vivek's **collaborative brain architecture** uses **cognitive specialization**:
 
 | 🎯 **Planner Brain** | ⚙️ **Executor Brain** |
 |---------------------|----------------------|
@@ -23,7 +23,7 @@ Traditional AI assistants use one model trying to handle everything. Buttler's *
 
 **Result:** Better code quality, consistent performance, and intelligent collaboration that outperforms single-model approaches.
 
-## ✨ Why Buttler's Design Matters
+## ✨ Why Vivek's Design Matters
 
 ### 🔒 **Privacy-First Architecture**
 - **100% local processing** - your code never leaves your machine
@@ -64,29 +64,29 @@ curl -fsSL https://ollama.com/install.sh | sh
 # Or download from https://ollama.com
 ```
 
-### 2. Install Buttler
+### 2. Install Vivek
 ```bash
-pip install buttler
+pip install vivek
 ```
 
 ### 3. One-Command Setup
 ```bash
-buttler setup
+vivek setup
 # Downloads models, configures everything automatically
 ```
 
 ### 4. Initialize Your Project
 ```bash
 cd your-coding-project
-buttler init
+vivek init
 ```
 
 ### 5. Start Your AI Coding Session
 ```bash
-buttler chat
+vivek chat
 ```
 
-## 💻 See Buttler in Action
+## 💻 See Vivek in Action
 
 ### Basic Conversation
 ```
@@ -177,7 +177,7 @@ You: Review my test coverage for the user authentication module
 
 ### Custom Model Setup
 ```yaml
-# buttler.md configuration
+# Vivek.md configuration
 ## LLM Configuration
 - **Planner Model**: qwen2.5-coder:7b
 - **Executor Model**: deepseek-coder:6.7b  
@@ -192,16 +192,16 @@ You: Review my test coverage for the user authentication module
 
 ### Team Configuration
 ```bash
-# Set up Buttler for your team's coding standards
-buttler init --template=team
-buttler config set coding_style "PEP8 with 88-char lines"
-buttler config set frameworks "FastAPI,React,PostgreSQL"
-buttler config set test_framework "pytest,jest"
+# Set up Vivek for your team's coding standards
+vivek init --template=team
+vivek config set coding_style "PEP8 with 88-char lines"
+vivek config set frameworks "FastAPI,React,PostgreSQL"
+vivek config set test_framework "pytest,jest"
 ```
 
 ## 📊 Performance Benchmarks
 
-| Metric | Buttler (Dual 7B) | Single 13B Model | Claude Code |
+| Metric | Vivek (Dual 7B) | Single 13B Model | Claude Code |
 |--------|-------------------|------------------|-------------|
 | **Response Time** | 2-4 seconds | 5-8 seconds | 3-6 seconds |
 | **Memory Usage** | 12GB RAM | 16GB RAM | 0GB (cloud) |
@@ -217,28 +217,28 @@ buttler config set test_framework "pytest,jest"
 ### Git Hooks
 ```bash
 # Pre-commit code review
-buttler review --mode=sdet --files=staged
+vivek review --mode=sdet --files=staged
 
 # Pre-push architecture validation  
-buttler analyze --mode=architect --scope=changed
+vivek analyze --mode=architect --scope=changed
 ```
 
 ### IDE Integration
 ```bash
 # VS Code extension (coming soon)
-buttler ide install vscode
+vivek ide install vscode
 
 # Vim/Neovim plugin
-buttler ide install nvim
+vivek ide install nvim
 ```
 
 ### CI/CD Pipeline
 ```yaml
 # GitHub Actions example
-- name: Buttler Code Review
+- name: Vivek Code Review
   run: |
-    buttler review --mode=sdet --output=sarif
-    buttler analyze --mode=architect --check=patterns
+    Vivek review --mode=sdet --output=sarif
+    Vivek analyze --mode=architect --check=patterns
 ```
 
 ## 🏗️ Architecture Deep Dive
@@ -288,14 +288,14 @@ condensed_context = {
 
 ## 🤝 Contributing
 
-Buttler is built by developers, for developers. We welcome contributions!
+vivek is built by developers, for developers. We welcome contributions!
 
 ### Development Setup
 ```bash
-git clone https://github.com/yourusername/buttler
-cd buttler  
+git clone https://github.com/sanketn26/vivek
+cd vivek  
 pip install -e ".[dev]"
-buttler setup --dev
+Vivek setup --dev
 ```
 
 ### Areas We Need Help
@@ -347,9 +347,9 @@ buttler setup --dev
 - [ ] Autonomous coding workflows
 - [ ] Community model marketplace
 
-## 💰 Why Choose Buttler Over Alternatives?
+## 💰 Why Choose Vivek Over Alternatives?
 
-| Feature | Buttler | Claude Code | GitHub Copilot | Cursor |
+| Feature | vivek | Claude Code | GitHub Copilot | Cursor |
 |---------|---------|-------------|----------------|---------|
 | **Privacy** | 🟢 100% Local | 🔴 Cloud Only | 🔴 Cloud Only | 🔴 Cloud Only |
 | **Cost** | 🟢 Free* | 🔴 $20+/month | 🔴 $10/month | 🔴 $20+/month |
@@ -374,17 +374,17 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Support & Community
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/sanketn26/buttler/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/sanketn26/buttler/discussions)  
-- 🐦 **Twitter**: [@ButtlerAI](https://twitter.com/buttlerai)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/sanketn26/Vivek/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/sanketn26/Vivek/discussions)  
+- 🐦 **Twitter**: [@VivekAI](https://twitter.com/Vivekai)
 
 ---
 
 <div align="center">
   
-**🎯 Buttler: Privacy-first, collaborative AI brain design for coding excellence.**
+**🎯 Vivek: Privacy-first, collaborative AI brain design for coding excellence.**
 
-[Get Started](https://github.com/sanketn26/buttler#quick-start) • 
+[Get Started](https://github.com/sanketn26/Vivek#quick-start) • 
 [Documentation](docs/) • 
 [Contributing](CONTRIBUTING.md)
 

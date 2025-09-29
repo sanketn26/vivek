@@ -1,0 +1,28 @@
+# Core dependencies
+click>=8.0.0
+rich>=13.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Local LLM
+ollama>=0.3.0
+requests>=2.28.0
+
+# Optional: Alternative LLM backends
+# transformers>=4.30.0
+# torch>=2.0.0
+# vllm>=0.2.0
+
+# File processing
+gitpython>=3.1.0
+pathspec>=0.11.0
+watchdog>=3.0.0
+
+# Utils
+psutil>=5.9.0
+colorama>=0.4.6
+
+# Development dependencies (optional)
+pytest>=7.0.0
+black>=23.0.0
+flake8>=6.0.0
