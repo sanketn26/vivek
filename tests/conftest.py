@@ -8,7 +8,8 @@ from unittest.mock import Mock, AsyncMock, MagicMock
 from typing import Dict, Any
 from click.testing import CliRunner
 
-from vivek.core.orchestrator import VivekOrchestrator, SessionContext, TaskPlan, ReviewResult
+from vivek.core.langgraph_orchestrator import LangGraphVivekOrchestrator
+from vivek.core.graph_state import VivekState, TaskPlan, ReviewResult
 from vivek.llm.models import PlannerModel, ExecutorModel, OllamaProvider
 
 
@@ -16,12 +17,6 @@ from vivek.llm.models import PlannerModel, ExecutorModel, OllamaProvider
 def project_root(tmp_path) -> Path:
     """Create a temporary project root directory for testing."""
     return tmp_path
-
-
-@pytest.fixture
-def session_context(project_root) -> SessionContext:
-    """Create a SessionContext instance for testing."""
-    return SessionContext(str(project_root))
 
 
 @pytest.fixture
@@ -56,7 +51,7 @@ def sample_task_plan() -> Dict[str, Any]:
             "Implement test cases",
             "Run tests to verify"
         ],
-        "relevant_files": ["vivek/core/orchestrator.py", "vivek/llm/models.py"],
+        "relevant_files": ["vivek/core/langgraph_orchestrator.py", "vivek/llm/models.py"],
         "priority": "normal"
     }
 
@@ -73,19 +68,22 @@ def sample_review_result() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_orchestrator(mock_ollama_provider, project_root) -> VivekOrchestrator:
-    """Create a VivekOrchestrator with mocked dependencies."""
-    orchestrator = VivekOrchestrator(
-        project_root=str(project_root),
-        planner_model="test-model",
-        executor_model="test-model"
-    )
+def mock_orchestrator(mock_ollama_provider, project_root) -> LangGraphVivekOrchestrator:
+    """Create a LangGraphVivekOrchestrator with mocked dependencies."""
+    from unittest.mock import patch
 
-    # Mock the planner and executor models to avoid actual LLM calls
-    orchestrator.planner = Mock(spec=PlannerModel)
-    orchestrator.executor = Mock(spec=ExecutorModel)
+    with patch("vivek.core.langgraph_orchestrator.OllamaProvider"):
+        orchestrator = LangGraphVivekOrchestrator(
+            project_root=str(project_root),
+            planner_model="test-model",
+            executor_model="test-model"
+        )
 
-    return orchestrator
+        # Mock the planner and executor models to avoid actual LLM calls
+        orchestrator.planner = Mock(spec=PlannerModel)
+        orchestrator.executor = Mock(spec=ExecutorModel)
+
+        return orchestrator
 
 
 @pytest.fixture

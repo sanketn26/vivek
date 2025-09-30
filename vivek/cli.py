@@ -10,7 +10,7 @@ from typing import Optional
 import yaml
 import os
 
-from .core.orchestrator import VivekOrchestrator
+from .core.langgraph_orchestrator import LangGraphVivekOrchestrator
 
 console = Console()
 
@@ -133,10 +133,12 @@ def chat(planner_model, executor_model):
     executor = executor_model or config['llm_configuration']['executor_model']
 
     console.print(Panel(
-        f"🤖 **Vivek Dual-Brain AI Assistant**\n\n"
+        f"🤖 **Vivek Dual-Brain AI Assistant** (LangGraph Powered)\n\n"
         f"🧠 Planner: {planner}\n"
         f"⚙️ Executor: {executor}\n"
-        f"📁 Project: {Path.cwd().name}\n\n"
+        f"📁 Project: {Path.cwd().name}\n"
+        f"🔄 Engine: LangGraph with auto-iteration\n"
+        f"💾 Sessions: Persistent with SqliteSaver\n\n"
         f"**Available Commands:**\n"
         f"• `/peer` - Collaborative programming mode\n"
         f"• `/architect` - System design and architecture\n"
@@ -149,8 +151,8 @@ def chat(planner_model, executor_model):
         style="blue"
     ))
 
-    # Initialize orchestrator
-    vivek = VivekOrchestrator(
+    # Initialize LangGraph orchestrator
+    vivek = LangGraphVivekOrchestrator(
         project_root=str(Path.cwd()),
         planner_model=planner,
         executor_model=executor
@@ -158,7 +160,7 @@ def chat(planner_model, executor_model):
 
     asyncio.run(chat_loop(vivek))
 
-async def chat_loop(vivek: VivekOrchestrator):
+async def chat_loop(vivek: LangGraphVivekOrchestrator):
     """Main interactive chat loop"""
 
     while True:
@@ -195,7 +197,7 @@ async def chat_loop(vivek: VivekOrchestrator):
         except Exception as e:
             console.print(f"❌ Error: {str(e)}", style="red")
 
-def handle_command(command: str, vivek: VivekOrchestrator) -> Optional[str]:
+def handle_command(command: str, vivek: LangGraphVivekOrchestrator) -> Optional[str]:
     """Handle special commands"""
     cmd = command.lower().strip()
 

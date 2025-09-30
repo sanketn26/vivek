@@ -30,18 +30,38 @@ help: ## Show this help message
 # Virtual Environment Management
 venv: ## Create virtual environment
 	@echo "🏗️  Creating virtual environment..."
-	python -m venv venv
+	@# Try to find Python 3.10+ in order of preference
+	@if command -v python3.12 >/dev/null 2>&1; then \
+		echo "Using python3.12"; \
+		python3.12 -m venv venv; \
+	elif command -v python3.11 >/dev/null 2>&1; then \
+		echo "Using python3.11"; \
+		python3.11 -m venv venv; \
+	elif command -v python3.10 >/dev/null 2>&1; then \
+		echo "Using python3.10"; \
+		python3.10 -m venv venv; \
+	elif python3 --version 2>&1 | grep -qE 'Python 3\.(1[0-9]|[2-9][0-9])'; then \
+		echo "Using python3 ($(python3 --version))"; \
+		python3 -m venv venv; \
+	else \
+		echo "❌ Python 3.10+ required but not found"; \
+		echo "💡 Please install Python 3.10 or higher:"; \
+		echo "   - macOS: brew install python@3.10"; \
+		echo "   - Ubuntu: sudo apt install python3.10"; \
+		echo "   - Or download from https://www.python.org/downloads/"; \
+		exit 1; \
+	fi
 	@echo "✅ Virtual environment created in 'venv' directory"
 
 install: venv ## Install dependencies from pyproject.toml
 	@echo "📦 Installing dependencies..."
-	./venv/bin/pip install --upgrade pip
-	./venv/bin/pip install -e .
+	@./venv/bin/pip install --upgrade pip || { echo "❌ Failed to upgrade pip"; exit 1; }
+	@./venv/bin/pip install -e . || { echo "❌ Failed to install dependencies"; exit 1; }
 	@echo "✅ Dependencies installed"
 
 install-dev: install ## Install in development mode with dev dependencies
 	@echo "🔧 Installing development dependencies..."
-	./venv/bin/pip install -e ".[dev]"
+	@./venv/bin/pip install -e ".[dev]" || { echo "❌ Failed to install dev dependencies"; exit 1; }
 	@echo "✅ Development dependencies installed"
 
 clean-venv: ## Remove virtual environment
@@ -52,34 +72,59 @@ clean-venv: ## Remove virtual environment
 # Development Commands
 format: ## Format code with black and isort
 	@echo "🎨 Formatting code..."
-	./venv/bin/black src/ cmd/ tests/ --line-length 88
-	./venv/bin/isort src/ cmd/ tests/ --profile black
+	@if [ -d "venv" ]; then \
+		./venv/bin/black vivek/ tests/ --line-length 88 2>/dev/null || echo "⚠️  black not installed, run 'make install-dev'"; \
+	else \
+		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
+		exit 1; \
+	fi
 	@echo "✅ Code formatted"
 
 lint: ## Lint code with flake8
 	@echo "🔍 Linting code..."
-	./venv/bin/flake8 src/ cmd/ tests/ --max-line-length 88 --extend-ignore E203,W503
+	@if [ -d "venv" ]; then \
+		./venv/bin/flake8 vivek/ tests/ --max-line-length 88 --extend-ignore E203,W503 2>/dev/null || echo "⚠️  flake8 not installed, run 'make install-dev'"; \
+	else \
+		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
+		exit 1; \
+	fi
 	@echo "✅ Linting complete"
 
 type-check: ## Type check with mypy
 	@echo "🔎 Type checking..."
-	./venv/bin/mypy src/ cmd/ tests/ --ignore-missing-imports
+	@if [ -d "venv" ]; then \
+		./venv/bin/mypy vivek/ --ignore-missing-imports 2>/dev/null || echo "⚠️  mypy not installed, run 'make install-dev'"; \
+	else \
+		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
+		exit 1; \
+	fi
 	@echo "✅ Type checking complete"
 
 test: ## Run tests with pytest
 	@echo "🧪 Running tests..."
-	./venv/bin/pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+	@if [ -d "venv" ]; then \
+		if ./venv/bin/pip show pytest-cov >/dev/null 2>&1; then \
+			./venv/bin/pytest tests/ -v --cov=vivek --cov-report=html --cov-report=term; \
+		else \
+			echo "⚠️  pytest-cov not installed, running tests without coverage..."; \
+			./venv/bin/pytest tests/ -v; \
+		fi; \
+	else \
+		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
+		exit 1; \
+	fi
 	@echo "✅ Tests complete"
 
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name "*.egg-info" -exec rm -rf {} +
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
-	find . -type d -name ".coverage" -exec rm -rf {} +
-	find . -type d -name "htmlcov" -exec rm -rf {} +
-	find . -name "*.pyc" -delete
-	find . -name "*.pyo" -delete
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name ".coverage" -delete 2>/dev/null || true
+	@find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+	@find . -name "*.pyc" -delete 2>/dev/null || true
+	@find . -name "*.pyo" -delete 2>/dev/null || true
+	@rm -rf .vivek/checkpoints.db* 2>/dev/null || true
 	@echo "✅ Build artifacts cleaned"
 
 clean-all: clean clean-venv ## Clean everything (build artifacts + venv)

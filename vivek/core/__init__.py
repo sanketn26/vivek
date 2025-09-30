@@ -1,9 +1,10 @@
 """
 Core package for Vivek AI assistant.
 
-Contains the main orchestrator and session management functionality.
+Contains the main LangGraph-based orchestrator and state management.
 """
 
-from .orchestrator import VivekOrchestrator
+from .langgraph_orchestrator import LangGraphVivekOrchestrator
+from .graph_state import VivekState, TaskPlan, ReviewResult
 
-__all__ = ['VivekOrchestrator']
+__all__ = ['LangGraphVivekOrchestrator', 'VivekState', 'TaskPlan', 'ReviewResult']
