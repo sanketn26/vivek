@@ -1,221 +1,428 @@
-# Vivek TODO List - Small LLM Optimized
+# Vivek TODO List - Optimized for Small-to-Medium LLMs
 
-Comprehensive improvement roadmap to make Vivek a truly excellent AI coding assistant that works effectively with small LLMs (1B-3B parameters).
+Comprehensive improvement roadmap to make Vivek a truly excellent AI coding assistant that works effectively with small-to-medium LLMs (3B-7B parameters).
 
-> **🚨 PRIORITY SHIFT:** Small LLM optimization is now Phase 1, followed by LangGraph integration. This solves fundamental context window and capability limitations before building advanced features.
+> **✅ ARCHITECTURE COMPLETE:** LangGraph orchestration is fully implemented with state persistence, conditional iteration, and all nodes working. Focus now shifts to prompt optimization, error handling, and real-world testing.
 
 ---
 
-## 🔥 Phase 1: Critical Foundation - Small LLM Optimization (Week 1-2)
+## ✅ Phase 0: COMPLETED - LangGraph Foundation
 
-### 1. Model & Context Optimization for Small LLMs ⭐ **NEW #1 PRIORITY**
+### LangGraph Orchestration ✅ **COMPLETE**
+**Priority:** Critical
+**Status:** ✅ Complete
+**Impact:** Provides robust orchestration with automatic iteration and state persistence
+
+**Completed Implementation:**
+- ✅ **StateGraph with conditional edges** - Full workflow implemented in `langgraph_orchestrator.py`
+- ✅ **External memory store** - SqliteSaver for persistent state at `.vivek/checkpoints.db`
+- ✅ **Thread-based sessions** - Multi-conversation support with thread_id tracking
+- ✅ **All nodes implemented** - Planner, Executor, Reviewer, Formatter nodes in `graph_nodes.py`
+- ✅ **Conditional iteration** - Quality-based feedback loop (max 3 iterations, threshold 0.6)
+- ✅ **VivekState management** - Efficient state with TypedDict in `graph_state.py`
+- ✅ **Comprehensive tests** - 20+ tests covering state, nodes, and orchestration
+
+**What LangGraph Already Provides:**
+- Context persistence across sessions (no need for separate RAG)
+- State snapshot and recovery (automatic memory management)
+- Conditional branching (quality-based iteration)
+- Event streaming support (for progress indicators)
+- Human-in-the-loop capabilities
+
+---
+
+## 🔥 Phase 1: Prompt Optimization & Context Management (Week 1-2)
+
+### 1. Prompt Engineering & Token Management ⭐ **NEW #1 PRIORITY**
 **Priority:** Critical (Highest)
-**Status:** In Progress
-**Impact:** Makes entire system viable for 1B-3B parameter models
-**Location:** Core LLM infrastructure
+**Status:** Not Started
+**Impact:** Makes system work reliably with 3B-7B models and their context windows
+**Location:** `vivek/llm/` - planner.py, executor.py, and mode-specific executors
 
-**Why This is Now #1:**
-Small LLMs have fundamental limitations that must be addressed first:
-- ✅ **Context Windows:** 4K-8K tokens vs 128K for large models
-- ✅ **Model Capabilities:** Simpler reasoning, more failures
-- ✅ **Resource Constraints:** Limited memory and processing
-- ✅ **Cost Effectiveness:** Can run on consumer hardware
-
-**Core Optimizations:**
-- **Model Selection**: Switch from `qwen2.5-coder:7b` to smaller 1B-3B models
-- **Context Management**: External memory store + RAG implementation
-- **Prompt Engineering**: Compress all prompts to fit small context windows
-- **Generation Parameters**: Optimize temperature and token limits for small models
+**Why This is #1:**
+Current prompts are verbose and unoptimized:
+- No token counting or length validation
+- Prompts can exceed context windows of smaller models
+- No compression or truncation strategies
+- Context dict can grow unbounded
 
 **Tasks:**
-- [x] **Implement external memory store for long-term context management**
-- [x] **Add RAG (Retrieval-Augmented Generation) for context injection**
-- [ ] Update model selection to use smaller 1B-3B parameter models
-- [ ] Optimize prompts for 4K-8K token context windows
-- [ ] Adjust temperature (0.3-0.7) and token limits (512-1024) for small LLMs
-- [ ] Implement robust fallback mechanisms for model failures
-- [ ] Simplify JSON parsing and add better error handling
-- [ ] Add context prioritization and compression
-- [ ] Test and validate changes with small LLM models
+- [ ] **Add token counting utility** - Count tokens before sending to model
+- [ ] **Create prompt templates** - Reusable, compressed prompt components
+- [ ] **Optimize planner prompts** - Compress system prompts in `planner.py` (currently verbose)
+- [ ] **Optimize executor prompts** - Streamline mode-specific prompts in executor classes
+- [ ] **Add context truncation** - Intelligently prune context when approaching limits
+- [ ] **Implement prompt compression** - Remove redundancy while preserving meaning
+- [ ] **Add context prioritization** - Keep most relevant info, drop old/irrelevant data
+- [ ] **Context window detection** - Detect model's max context and adjust accordingly
 
-**Model Configuration:**
-```python
-# Optimized for small LLMs
-class SmallLLMProvider(LLMProvider):
-    def generate(self, prompt: str, **kwargs) -> str:
-        # Context window awareness
-        if len(prompt) > 4000:  # Conservative limit
-            prompt = self._compress_prompt(prompt)
+**Files to Modify:**
+- `vivek/llm/planner.py` - Compress analyze_request and review_output prompts
+- `vivek/llm/executor.py` - Optimize BaseExecutor.build_prompt()
+- `vivek/llm/*_executor.py` - Streamline mode_prompt in all executors
+- `vivek/core/graph_nodes.py` - Add token validation before model calls
+- **New:** `vivek/utils/prompt_utils.py` - Token counting and compression utilities
 
-        return ollama.generate(
-            model=self.model_name,  # 1B-3B models only
-            prompt=prompt,
-            options={
-                "temperature": 0.3-0.7,  # Higher for small models
-                "top_p": 0.9,
-                "num_predict": 512-1024,  # Smaller limits
-                "repeat_penalty": 1.2
-            }
-        )
-```
-
-**External Memory Integration:**
-```python
-class ExternalMemoryStore:
-    """Store conversation history and context externally"""
-    def __init__(self, storage_path: str = ".vivek/memory.db"):
-        self.storage = sqlite3.connect(storage_path)
-        self._create_tables()
-
-    def store_context(self, context_id: str, content: str, metadata: dict):
-        # Store large context chunks externally
-        pass
-
-    def retrieve_relevant(self, query: str, limit_tokens: int) -> List[str]:
-        # Retrieve only what's needed for current context
-        pass
-```
-
-**Files to Create/Modify:**
-- `vivek/llm/small_llm_provider.py` - Optimized provider for small models
-- `vivek/core/external_memory.py` - External memory management
-- `vivek/core/rag_context.py` - RAG implementation for context injection
-- `vivek/llm/prompt_compressor.py` - Prompt optimization utilities
-- `vivek/llm/models.py` - Add model capability detection
-
----
-
-## 🔥 Phase 2: LangGraph Foundation (Week 3-4)
-
-### 2. LangGraph Integration (Small LLM-Aware) ⭐ **ENHANCED FOR SMALL LLMS**
+### 2. Robust Error Handling & Fallbacks ⭐ **HIGH PRIORITY**
 **Priority:** Critical
 **Status:** Not Started
-**Impact:** Provides orchestration foundation optimized for small model constraints
+**Impact:** System reliability when models fail or produce invalid output
+**Location:** `vivek/llm/provider.py` and `vivek/llm/planner.py`
 
-**Enhanced for Small LLMs:**
-- **Memory-Efficient State**: Compressed state data, selective persistence
-- **Context-Aware Nodes**: Nodes that respect context window limits
-- **Smart Context Injection**: Use external memory + RAG instead of large state
-- **Fallback Strategies**: Handle small model failures gracefully
+**Current Issues:**
+- JSON parsing errors are silently swallowed with default fallbacks
+- No retry logic for failed API calls
+- No user feedback when things go wrong
+- Errors in `provider.py` return error strings that get processed as valid output
 
 **Tasks:**
-- [ ] Build StateGraph with context window awareness
-- [ ] Define memory-efficient state management
-- [ ] Implement context-aware node functions (planner, executor, reviewer)
-- [ ] Add conditional edges optimized for small model limitations
-- [ ] Integrate efficient context injection system (uses Phase 1 RAG)
-- [ ] Add fallback strategies for model failures
-- [ ] Create compatibility layer with existing orchestrator
-- [ ] Migrate tests for graph-based orchestration
+- [ ] **Add proper exception hierarchy** - VivekError base class with specific subtypes
+- [ ] **Implement retry logic** - Exponential backoff for transient failures
+- [ ] **Better JSON parsing** - Try multiple strategies (extract, repair, fallback)
+- [ ] **User error feedback** - Rich console messages when things fail
+- [ ] **Model failure detection** - Detect when model output is garbage
+- [ ] **Fallback strategies** - Graceful degradation (simpler prompts, fewer steps)
+- [ ] **Logging system** - Debug logs for troubleshooting model issues
 
-**Small LLM-Optimized State:**
-```python
-class SmallLLMVivekState(TypedDict):
-    user_input: str
-    task_plan: dict  # Compressed, essential only
-    executor_output: str
-    context: dict    # External memory references, not full content
-    memory_ids: List[str]  # References to external memory store
-    model_capabilities: dict  # Track model limitations
-```
-
----
-
-## 🔥 Phase 3: Context-Aware Tools (Week 5-6)
-
-### 3. File Operations with Small LLM Constraints
-**Priority:** Critical
-**Enhanced for Small LLMs:**
-- **Intelligent File Selection**: Only load relevant files to avoid context overflow
-- **Chunked Processing**: Handle large files in small chunks
-- **Minimal Context Tools**: Tools designed for limited context windows
-
-### 4. Project Analysis for Small Models
-**Priority:** Critical
-- **Efficient Analysis**: Parse only essential project information
-- **Smart Indexing**: Build lightweight indexes that fit in memory
-- **Context Compression**: Summarize project info for small models
-
----
-
-## 🎯 Phase 4: Core Features (Week 7-10)
-
-### 5. Review and Analyze Commands
-**Priority:** High
-**Small LLM Considerations:**
-- **Simplified Prompts**: Use compressed, focused prompts
-- **Progressive Disclosure**: Show complex information in stages
-- **Smart Fallbacks**: Graceful degradation for complex analysis
-
-### 6. Enhanced Error Handling for Small Models
-**Priority:** High
 **New Exception Types:**
 ```python
+class VivekError(Exception): pass
+class ModelAPIError(VivekError): pass
+class JSONParsingError(VivekError): pass
 class ContextWindowExceededError(VivekError): pass
-class ModelCapacityError(VivekError): pass
-class PromptTooLargeError(VivekError): pass
+class ModelOutputInvalidError(VivekError): pass
 ```
 
----
-
-## 📊 INTEGRATION BENEFITS
-
-### **Small LLM Optimizations That Enhance LangGraph:**
-1. **External Memory + RAG** → Context injection without state bloat
-2. **Prompt Optimization** → More efficient graph nodes
-3. **Fallback Mechanisms** → Better error recovery in graph
-4. **Model Selection** → Appropriate model routing
-
-### **LangGraph That Helps Small LLMs:**
-1. **State Management** → Perfect for context window management
-2. **Persistence** → Complements external memory store
-3. **Human-in-the-loop** → Handles small model limitations
-4. **Event Streaming** → Better UX for slower small models
+**Files to Modify:**
+- `vivek/llm/provider.py` - Add retry logic and better error handling
+- `vivek/llm/planner.py` - Improve JSON parsing with multiple strategies
+- **New:** `vivek/core/exceptions.py` - Custom exception hierarchy
+- **New:** `vivek/utils/logging.py` - Structured logging utilities
 
 ---
 
-## 🚀 IMPLEMENTATION SEQUENCE
+## 🔥 Phase 2: Model Testing & Parameter Tuning (Week 3-4)
 
-**Week 1-2: Small LLM Foundation**
-1. External memory store + RAG implementation ✅
-2. Model selection and parameter optimization
-3. Prompt compression across all components
-4. Basic fallback mechanisms
+### 3. Real-World Model Testing ⭐ **CRITICAL FOR VALIDATION**
+**Priority:** High
+**Status:** Not Started
+**Impact:** Validates system works with actual small-to-medium models
+**Location:** `tests/` and `vivek/llm/provider.py`
 
-**Week 3-4: LangGraph Integration**
-1. Build StateGraph with context awareness
-2. Implement memory-efficient state management
-3. Add context injection systems
-4. Enhanced error handling
+**Why This Matters:**
+- All current tests use mocks - no real model validation
+- Unknown if system works with 3B models
+- No benchmarks for different model sizes
+- No data on actual context window usage
 
-**Week 5-8: Feature Development**
-- All features build on optimized foundation
-- Context constraints already addressed
-- Better performance and reliability
+**Tasks:**
+- [ ] **Integration tests with real models** - Test with Qwen2.5-coder:1.5b, 3b, 7b
+- [ ] **Benchmark context window usage** - Measure actual token counts in prompts
+- [ ] **Quality testing across model sizes** - Compare output quality (1.5B vs 3B vs 7B)
+- [ ] **Performance benchmarks** - Response time, memory usage, throughput
+- [ ] **Failure mode analysis** - Document when/how different models fail
+- [ ] **Optimal model recommendations** - Update docs with tested model recommendations
+
+**Test Models to Validate:**
+- `qwen2.5-coder:1.5b` (1.5B params, 4K context) - Minimum viable?
+- `qwen2.5-coder:3b` (3B params, 8K context) - Good balance?
+- `qwen2.5-coder:7b` (7B params, 32K context) - Current default
+- `deepseek-coder:1.3b` (1.3B params) - Alternative small model
+- `deepseek-coder:6.7b` (6.7B params) - Alternative medium model
+
+**Files to Create:**
+- **New:** `tests/integration/test_real_models.py` - Integration tests with real Ollama models
+- **New:** `tests/benchmarks/` - Performance and quality benchmarks
+- **New:** `docs/model_recommendations.md` - Tested model comparison and recommendations
+
+### 4. Model Parameter Optimization
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Better performance and reliability across different model sizes
+**Location:** `vivek/llm/provider.py`
+
+**Current Issues:**
+- Fixed temperature (0.1 planner, 0.2 executor) - not tuned per model
+- Fixed num_predict (2048) - may be too high for small models
+- No model capability detection
+- No adaptive parameter selection
+
+**Tasks:**
+- [ ] **Add model profiles** - Different params for different model sizes
+- [ ] **Tune temperature** - Test 0.1-0.7 range for different models
+- [ ] **Optimize num_predict** - Test 512/1024/2048 for quality vs speed
+- [ ] **Add top_p tuning** - Currently fixed at 0.9
+- [ ] **Implement model detection** - Auto-detect model size/capabilities
+- [ ] **Adaptive parameters** - Adjust based on detected model
+
+**Model Profiles:**
+```python
+MODEL_PROFILES = {
+    "small": {  # 1-3B models
+        "temperature": 0.3,
+        "num_predict": 512,
+        "top_p": 0.9,
+        "repeat_penalty": 1.2
+    },
+    "medium": {  # 3-7B models (current default)
+        "temperature": 0.2,
+        "num_predict": 1024,
+        "top_p": 0.9,
+        "repeat_penalty": 1.1
+    },
+    "large": {  # 7B+ models
+        "temperature": 0.1,
+        "num_predict": 2048,
+        "top_p": 0.9,
+        "repeat_penalty": 1.0
+    }
+}
+```
+
+**Files to Modify:**
+- `vivek/llm/provider.py` - Add model profiles and detection
+- **New:** `vivek/llm/model_profiles.py` - Model capability detection and profiles
 
 ---
 
-## ✨ KEY INSIGHTS
+## 🔥 Phase 3: File Operations & Context-Aware Tools (Week 5-6)
 
-1. **Small LLM optimization must come first** - fixes fundamental limitations
-2. **External memory + RAG is the biggest win** - elegantly solves context problems
-3. **LangGraph + small LLMs work excellently together** - state management complements context limits
-4. **Most existing features become easier** - solid foundation enables everything
+### 5. File Operations with Smart Context Management
+**Priority:** High
+**Status:** Not Started
+**Impact:** Enables code editing without overwhelming context windows
+**Location:** New `vivek/tools/` directory
 
-**Success Metrics for Small LLMs:**
-- [ ] Models run effectively in 4K-8K context windows
-- [ ] External memory store handles large contexts efficiently
-- [ ] RAG provides relevant information without context overflow
-- [ ] Graceful fallbacks when models struggle with complexity
-- [ ] All existing functionality works with 1B-3B parameter models
+**Why This Matters:**
+- Can't edit code without file operations
+- Must avoid loading entire projects into context
+- Need intelligent file selection and chunking
+
+**Tasks:**
+- [ ] **File reading tool** - Read files with size limits
+- [ ] **File writing tool** - Write/edit files with diffs
+- [ ] **Smart file selection** - AI suggests relevant files based on task
+- [ ] **Chunked file processing** - Handle large files in manageable chunks
+- [ ] **Project structure analysis** - Understand project layout without loading everything
+- [ ] **Gitignore support** - Respect .gitignore and .vivekignore
+- [ ] **Diff generation** - Show changes before applying
+
+**Files to Create:**
+- **New:** `vivek/tools/__init__.py` - Tool registry
+- **New:** `vivek/tools/file_operations.py` - Read/write/edit files
+- **New:** `vivek/tools/project_analysis.py` - Project structure and indexing
+- **New:** `vivek/tools/context_manager.py` - Smart context selection
+
+### 6. Project Indexing & Search
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Fast file/symbol lookup without loading everything
+**Location:** `vivek/tools/indexing.py`
+
+**Tasks:**
+- [ ] **Build lightweight index** - File paths, functions, classes
+- [ ] **Symbol search** - Find definitions quickly
+- [ ] **Semantic search** - Find relevant files by description
+- [ ] **Index caching** - Persist index between sessions
+- [ ] **Incremental updates** - Update index on file changes
 
 ---
 
-## 🎯 REVISED ROADMAP ACCELERATION
+## 🎯 Phase 4: Enhanced Features & Polish (Week 7-10)
 
-**v0.1.5 (Small LLM Foundation):** Context optimization + basic LangGraph
-**v0.2.0 (Context Master):** Full LangGraph + RAG + project analysis
-**v0.3.0 (Cloud Hybrid):** Existing roadmap features on solid foundation
-**v0.4.0 (Enterprise Ready):** Advanced features with small LLM reliability
+### 7. Review and Analyze Commands
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Code review and architecture analysis capabilities
+**Location:** New commands in `vivek/cli.py`
 
-This integrated approach gives you the **best of both worlds**: strategic LangGraph foundation + practical small LLM optimizations.
+**Tasks:**
+- [ ] **Review command** - Code review with quality assessment
+- [ ] **Analyze command** - Architecture analysis and recommendations
+- [ ] **Streaming responses** - Show progress for long-running tasks
+- [ ] **Rich formatting** - Better terminal output with syntax highlighting
+- [ ] **Export reports** - Save reviews/analysis to markdown files
+
+**Files to Modify:**
+- `vivek/cli.py` - Add review and analyze commands
+- **New:** `vivek/commands/review.py` - Code review functionality
+- **New:** `vivek/commands/analyze.py` - Architecture analysis
+
+### 8. Usage Metrics & Observability
+**Priority:** Low
+**Status:** Not Started
+**Impact:** Track token usage, costs, and performance
+**Location:** New `vivek/metrics/` directory
+
+**Tasks:**
+- [ ] **Token counting** - Track prompt/completion tokens per request
+- [ ] **Response time tracking** - Measure planner/executor/reviewer times
+- [ ] **Quality metrics** - Track review scores and iteration rates
+- [ ] **Session statistics** - Summary stats at end of chat session
+- [ ] **Export metrics** - JSON/CSV export for analysis
+
+**Files to Create:**
+- **New:** `vivek/metrics/tracker.py` - Metrics collection
+- **New:** `vivek/metrics/reporter.py` - Metrics reporting and export
+
+### 9. Configuration & Customization
+**Priority:** Low
+**Status:** Not Started
+**Impact:** Better user customization and team settings
+**Location:** `vivek/config/` directory
+
+**Tasks:**
+- [ ] **Custom mode definitions** - Users define their own modes
+- [ ] **Prompt customization** - Override default prompts
+- [ ] **Model presets** - Save/load model configurations
+- [ ] **Team config sharing** - Share vivek.md templates
+- [ ] **Config validation** - Validate config files on load
+
+---
+
+## 📊 SUCCESS METRICS
+
+**Phase 1 Success (Prompt Optimization):**
+- [ ] Prompts fit in 8K context window for all operations
+- [ ] Token usage reduced by 30-50% from current baseline
+- [ ] JSON parsing success rate > 95%
+- [ ] Error messages are actionable and user-friendly
+
+**Phase 2 Success (Model Testing):**
+- [ ] System works reliably with 3B models (Qwen2.5-coder:3b)
+- [ ] Documented model recommendations based on real testing
+- [ ] Performance benchmarks published for 1.5B/3B/7B models
+- [ ] Quality comparison shows acceptable results with 3B+
+
+**Phase 3 Success (File Operations):**
+- [ ] Can edit files without exceeding context windows
+- [ ] File operations integrate seamlessly with LangGraph flow
+- [ ] Project indexing speeds up file selection by 10x
+- [ ] Respects .gitignore and project structure
+
+**Phase 4 Success (Polish):**
+- [ ] Review command provides useful code feedback
+- [ ] Metrics show system efficiency improvements
+- [ ] User customization enables team-specific workflows
+- [ ] Documentation is comprehensive and accurate
+
+---
+
+## 🎯 RECOMMENDED IMPLEMENTATION ORDER
+
+### **Weeks 1-2: Foundation (Phase 1)**
+**Goal:** Make current system robust and efficient
+1. Add token counting and prompt compression utilities
+2. Optimize all existing prompts (planner + executors)
+3. Implement proper error handling with retries
+4. Add logging and user feedback
+
+**Key Deliverable:** System works reliably within context limits
+
+### **Weeks 3-4: Validation (Phase 2)**
+**Goal:** Prove system works with smaller models
+1. Write integration tests with real models
+2. Run benchmarks on 1.5B/3B/7B models
+3. Document findings and optimal model choices
+4. Tune parameters based on test results
+
+**Key Deliverable:** Evidence-based model recommendations
+
+### **Weeks 5-6: Capabilities (Phase 3)**
+**Goal:** Add file operations for code editing
+1. Implement file read/write/edit tools
+2. Add project structure analysis
+3. Build lightweight file/symbol index
+4. Integrate tools into LangGraph nodes
+
+**Key Deliverable:** Can actually edit code in projects
+
+### **Weeks 7-10: Enhancement (Phase 4)**
+**Goal:** Polish and extend functionality
+1. Add review/analyze commands
+2. Implement metrics and observability
+3. Add configuration and customization
+4. Update documentation
+
+**Key Deliverable:** Feature-complete v0.2.0 release
+
+---
+
+## 🚀 VERSION ROADMAP
+
+### **v0.1.5 (Current + Phase 1) - "Stable Foundation"**
+- ✅ LangGraph orchestration (already complete)
+- 🔧 Optimized prompts and error handling
+- 🔧 Proper logging and debugging
+- **Target:** 2-3 weeks
+
+### **v0.2.0 (Phase 2 + 3) - "Context Master"**
+- 📊 Validated with 3B-7B models
+- 📁 File operations and project indexing
+- 🔍 Smart context management
+- **Target:** 6-8 weeks
+
+### **v0.3.0 (Phase 4) - "Feature Complete"**
+- 📝 Review and analyze commands
+- 📈 Metrics and observability
+- ⚙️ User customization
+- **Target:** 10-12 weeks
+
+### **v0.4.0 (Future) - "Cloud Hybrid"**
+- ☁️ Cloud model fallback (OpenAI, Anthropic)
+- 🤝 Team collaboration features
+- 💰 Cost tracking and optimization
+- **Target:** 16-20 weeks
+
+### **v1.0.0 (Future) - "Enterprise Ready"**
+- 🔌 IDE extensions (VS Code, Vim)
+- 🔒 Advanced security and compliance
+- 🎨 Custom model fine-tuning
+- **Target:** 24+ weeks
+
+---
+
+## ✨ KEY INSIGHTS & LEARNINGS
+
+### **What's Already Working:**
+1. ✅ **LangGraph orchestration is solid** - State management, iteration, persistence all working
+2. ✅ **Dual-brain architecture is sound** - Planner/Executor separation is effective
+3. ✅ **Test coverage is good** - 20+ tests with proper mocking and structure
+4. ✅ **CLI UX is polished** - Rich formatting, mode switching, nice help text
+
+### **What Needs Immediate Attention:**
+1. 🔴 **Prompt optimization** - Current bottleneck for smaller models
+2. 🔴 **Error handling** - Silent failures are confusing for users
+3. 🔴 **Real model testing** - All tests use mocks, need validation with actual models
+4. 🔴 **File operations** - Can't edit code without file tools
+
+### **Strategic Recommendations:**
+1. **Keep 7B as default** - 3B is minimum, 7B is sweet spot for quality
+2. **Optimize prompts first** - Biggest impact for least effort
+3. **Test with real models early** - Avoid surprises later
+4. **File operations before features** - Can't be a coding assistant without editing code
+5. **Document as you go** - Update CLAUDE.md and README.md with learnings
+
+### **Lessons from Analysis:**
+- LangGraph already solves external memory/RAG needs
+- SqliteSaver is more elegant than custom memory stores
+- Context management is about prompts, not architecture
+- Testing with real models should happen earlier
+- 1B-3B might be too small for quality coding assistance
+
+---
+
+## 📝 MAINTENANCE NOTES
+
+**This TODO.md should be updated:**
+- After completing each major task (mark with ✅)
+- When priorities change based on learnings
+- When new requirements emerge from testing
+- When version roadmap shifts
+
+**Current Status:** Updated 2025-09-30 to reflect:
+- LangGraph is complete (Phase 0)
+- Prompt optimization is #1 priority (Phase 1)
+- Model testing must happen early (Phase 2)
+- File operations are critical (Phase 3)
+- Realistic 3B-7B model target (not 1B-3B)
