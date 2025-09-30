@@ -6,8 +6,10 @@ Each node is a function that takes the current state and returns state updates.
 
 import json
 from typing import Dict, Any
+
+from ..llm.planner import PlannerModel
 from .graph_state import VivekState, TaskPlan, ReviewResult, increment_iteration, get_iteration_count
-from ..llm.models import PlannerModel, ExecutorModel
+from ..llm.executor import BaseExecutor
 
 
 def create_planner_node(planner: PlannerModel):
@@ -54,12 +56,12 @@ def create_planner_node(planner: PlannerModel):
     return planner_node
 
 
-def create_executor_node(executor: ExecutorModel):
+def create_executor_node(executor: BaseExecutor):
     """
     Factory function to create an executor node with the given executor model.
 
     Args:
-        executor: ExecutorModel instance
+        executor: BaseExecutor instance
 
     Returns:
         Node function that executes tasks

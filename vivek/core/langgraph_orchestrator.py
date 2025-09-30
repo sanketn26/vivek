@@ -8,11 +8,14 @@ This replaces the manual orchestration with a graph-based approach providing:
 - Human-in-the-loop capabilities
 """
 
-import asyncio
 from pathlib import Path
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Dict, Any, AsyncIterator
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+from ..llm.planner import PlannerModel
+
+from ..llm.provider import OllamaProvider
 
 from .graph_state import VivekState, initialize_state, should_iterate
 from .graph_nodes import (
@@ -21,7 +24,7 @@ from .graph_nodes import (
     create_reviewer_node,
     format_response_node,
 )
-from ..llm.models import PlannerModel, ExecutorModel, OllamaProvider
+from ..llm.executor import get_executor
 
 
 class LangGraphVivekOrchestrator:
@@ -51,11 +54,15 @@ class LangGraphVivekOrchestrator:
         self.project_root.mkdir(parents=True, exist_ok=True)
 
         # Initialize models
-        planner_provider = OllamaProvider(planner_model)
-        executor_provider = OllamaProvider(executor_model)
+        self.planner_provider = OllamaProvider(planner_model)
+        self.executor_provider = OllamaProvider(executor_model)
 
-        self.planner = PlannerModel(planner_provider)
-        self.executor = ExecutorModel(executor_provider)
+        self.planner = PlannerModel(self.planner_provider)
+
+        # Set initial mode before creating executor
+        self.current_mode = "peer"
+        # instantiate executor for the initial mode
+        self.executor = get_executor(self.current_mode, self.executor_provider)
 
         # Build graph
         self.graph = self._build_graph()
@@ -207,6 +214,8 @@ class LangGraphVivekOrchestrator:
         if mode in valid_modes:
             self.current_mode = mode
             self.context["current_mode"] = mode
+            # update executor instance for the new mode
+            self.executor = get_executor(mode, self.executor_provider)
             return f"Switched to {mode} mode"
         else:
             return f"Invalid mode. Valid modes: {', '.join(valid_modes)}"

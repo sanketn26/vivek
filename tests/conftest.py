@@ -4,13 +4,14 @@ Pytest configuration and fixtures for Vivek project tests.
 import pytest
 import asyncio
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import Mock
 from typing import Dict, Any
 from click.testing import CliRunner
 
 from vivek.core.langgraph_orchestrator import LangGraphVivekOrchestrator
-from vivek.core.graph_state import VivekState, TaskPlan, ReviewResult
-from vivek.llm.models import PlannerModel, ExecutorModel, OllamaProvider
+from vivek.llm.planner import PlannerModel
+from vivek.llm.provider import OllamaProvider
+from vivek.llm.executor import BaseExecutor, get_executor
 
 
 @pytest.fixture
@@ -34,9 +35,9 @@ def planner_model(mock_ollama_provider) -> PlannerModel:
 
 
 @pytest.fixture
-def executor_model(mock_ollama_provider) -> ExecutorModel:
+def executor_model(mock_ollama_provider) -> BaseExecutor:
     """Create an ExecutorModel with mocked provider."""
-    return ExecutorModel(mock_ollama_provider)
+    return get_executor("sdet", mock_ollama_provider)
 
 
 @pytest.fixture
@@ -81,7 +82,7 @@ def mock_orchestrator(mock_ollama_provider, project_root) -> LangGraphVivekOrche
 
         # Mock the planner and executor models to avoid actual LLM calls
         orchestrator.planner = Mock(spec=PlannerModel)
-        orchestrator.executor = Mock(spec=ExecutorModel)
+        orchestrator.executor = Mock(spec=BaseExecutor)
 
         return orchestrator
 
