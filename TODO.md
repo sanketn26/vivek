@@ -230,7 +230,43 @@ MODEL_PROFILES = {
 
 ## 🎯 Phase 4: Enhanced Features & Polish (Week 7-10)
 
-### 7. Review and Analyze Commands
+### 7. Streaming Token Generation with Stats
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Better UX with real-time feedback and performance visibility
+**Location:** `vivek/llm/provider.py` and `vivek/cli.py`
+
+**Why This Matters:**
+- Current implementation shows no progress during generation
+- Users don't know if system is working or hung
+- No visibility into generation speed/performance
+- Streaming feels more responsive and interactive
+
+**Tasks:**
+- [ ] **Add streaming support to OllamaProvider** - Use Ollama's streaming API
+- [ ] **Token-by-token display in CLI** - Stream tokens to console in real-time
+- [ ] **Generation stats display** - Show tokens/sec, total tokens, elapsed time
+- [ ] **Progress indicators** - Show which node is active (planning/executing/reviewing)
+- [ ] **Streaming in LangGraph nodes** - Integrate streaming into planner/executor nodes
+- [ ] **Configurable streaming** - Option to disable for scripting/automation
+
+**Files to Modify:**
+- `vivek/llm/provider.py` - Add `generate_stream()` method with stats tracking
+- `vivek/llm/planner.py` - Use streaming for analyze/review operations
+- `vivek/llm/executor.py` - Use streaming for code generation
+- `vivek/core/graph_nodes.py` - Stream events from nodes to CLI
+- `vivek/cli.py` - Handle streaming output with rich console formatting
+
+**Reference Implementation:**
+```python
+# Similar to MLX-LM streaming:
+for chunk in provider.generate_stream(prompt):
+    print(chunk.text, end="", flush=True)
+    if chunk.tokens % 20 == 0:
+        print(f"\n[{chunk.tokens_per_sec:.1f} tok/s]", flush=True)
+```
+
+### 8. Review and Analyze Commands
 **Priority:** Medium
 **Status:** Not Started
 **Impact:** Code review and architecture analysis capabilities
@@ -239,7 +275,6 @@ MODEL_PROFILES = {
 **Tasks:**
 - [ ] **Review command** - Code review with quality assessment
 - [ ] **Analyze command** - Architecture analysis and recommendations
-- [ ] **Streaming responses** - Show progress for long-running tasks
 - [ ] **Rich formatting** - Better terminal output with syntax highlighting
 - [ ] **Export reports** - Save reviews/analysis to markdown files
 
@@ -248,7 +283,7 @@ MODEL_PROFILES = {
 - **New:** `vivek/commands/review.py` - Code review functionality
 - **New:** `vivek/commands/analyze.py` - Architecture analysis
 
-### 8. Usage Metrics & Observability
+### 9. Usage Metrics & Observability
 **Priority:** Low
 **Status:** Not Started
 **Impact:** Track token usage, costs, and performance
@@ -265,7 +300,7 @@ MODEL_PROFILES = {
 - **New:** `vivek/metrics/tracker.py` - Metrics collection
 - **New:** `vivek/metrics/reporter.py` - Metrics reporting and export
 
-### 9. Configuration & Customization
+### 10. Configuration & Customization
 **Priority:** Low
 **Status:** Not Started
 **Impact:** Better user customization and team settings
@@ -277,6 +312,51 @@ MODEL_PROFILES = {
 - [ ] **Model presets** - Save/load model configurations
 - [ ] **Team config sharing** - Share vivek.md templates
 - [ ] **Config validation** - Validate config files on load
+
+### 11. MLX-LM Backend Integration
+**Priority:** Low (Future Enhancement)
+**Status:** Not Started
+**Impact:** Alternative backend for Mac users with potential performance benefits
+**Location:** New `vivek/llm/mlx_provider.py`
+
+**Why Consider MLX-LM:**
+- Native Apple Silicon optimization (M1/M2/M3 chips)
+- Direct Python API without HTTP overhead
+- Built-in quantization support (3-bit, 4-bit models)
+- Memory-efficient KV cache
+- LoRA fine-tuning capabilities for model personalization
+- OpenAI-compatible API server mode
+
+**Potential Benefits:**
+- Better performance on Apple Silicon compared to Ollama
+- Lower memory usage with quantized models
+- Ability to fine-tune models on user's own code/style
+- No HTTP server required (direct Python API)
+
+**Potential Drawbacks:**
+- Mac-only solution (not cross-platform like Ollama)
+- Requires manual model downloads from HuggingFace
+- Less mature ecosystem than Ollama
+- Additional dependency complexity
+
+**Tasks:**
+- [ ] **Research MLX-LM compatibility** - Test with coding models (Qwen, DeepSeek, Llama)
+- [ ] **Create MLXProvider class** - Implement same interface as OllamaProvider
+- [ ] **Add backend selection** - Config option to choose Ollama vs MLX-LM
+- [ ] **Performance benchmarking** - Compare Ollama vs MLX-LM on same hardware
+- [ ] **Fine-tuning support** - Add `vivek train` command for LoRA fine-tuning
+- [ ] **Model management** - Handle MLX model downloads from HuggingFace
+- [ ] **Documentation** - Guide for Mac users on MLX-LM setup
+
+**Files to Create:**
+- **New:** `vivek/llm/mlx_provider.py` - MLX-LM backend implementation
+- **New:** `vivek/commands/train.py` - Fine-tuning command (LoRA)
+- **New:** `docs/mlx_setup.md` - MLX-LM setup and usage guide
+
+**Decision Criteria:**
+- Only implement if benchmarks show >20% performance improvement
+- Only if it doesn't complicate core Ollama workflow
+- Consider after core features (file operations) are complete
 
 ---
 
