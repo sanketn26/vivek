@@ -24,30 +24,85 @@ class BaseExecutor:
             context, max_context_tokens, strategy="selective"
         )
 
-        # Build compact task summary
-        task_parts = []
-        if task_plan.get("description"):
-            task_parts.append(f"Task: {task_plan['description']}")
-        if task_plan.get("mode"):
-            task_parts.append(f"Mode: {task_plan['mode']}")
-        if task_plan.get("steps"):
-            steps_str = " | ".join(task_plan["steps"][:3])  # Limit to 3 main steps
-            task_parts.append(f"Steps: {steps_str}")
-        if task_plan.get("relevant_files"):
-            files_str = ", ".join(task_plan["relevant_files"][:5])  # Limit to 5 files
-            task_parts.append(f"Files: {files_str}")
-
-        task_summary = " | ".join(task_parts)
+        # Get work items from task plan
+        work_items = task_plan.get("work_items", [])
+        
+        # Build work items summary
+        work_items_summary = []
+        for i, item in enumerate(work_items, 1):
+            status = "[NEW]" if item.get("file_status") == "new" else "[MODIFY]"
+            file_path = item.get("file_path", "")
+            desc = item.get("description", "")
+            deps = item.get("dependencies", [])
+            deps_str = f" (depends on: {', '.join(map(str, deps))})" if deps else ""
+            
+            work_items_summary.append(
+                f"{i}. {status} {file_path}\n   Mode: {item.get('mode', 'coder')}\n   Task: {desc}{deps_str}"
+            )
+        
+        work_items_str = "\n".join(work_items_summary) if work_items_summary else "No specific work items defined"
 
         mode_instruction = self.mode_prompt or f"Mode: {self.mode}"
 
         prompt = f"""{mode_instruction}
 
-Context: {compressed_context}
+## CURRENT CONTEXT:
+{compressed_context}
 
-{task_summary}
+## OVERALL TASK:
+{task_plan.get('description', 'Execute the task')}
 
-Execute step by step."""
+## WORK ITEMS TO EXECUTE:
+{work_items_str}
+
+## EXECUTION PROCESS:
+
+### PHASE 1: Work Item Breakdown (for each work item)
+For each work item above:
+1. ANALYZE: Understand the specific requirement
+2. SUB-TASKS: Break into 3-5 atomic sub-tasks
+   - Each sub-task must be: specific, testable, independent
+   - Sub-tasks must be in dependency order
+3. VALIDATE: Check if breakdown covers all requirements
+
+### PHASE 2: Incremental Implementation
+For each sub-task:
+1. IMPLEMENT: Execute the sub-task following mode guidelines
+2. VERIFY: Check output meets sub-task requirements
+3. CHECKPOINT: Confirm completion before next sub-task
+
+### PHASE 3: Integration
+1. Combine all sub-task outputs
+2. Verify work item completion
+3. Check dependencies are satisfied
+
+## OUTPUT REQUIREMENTS:
+For EACH work item, provide:
+
+```
+### Work Item [N]: [file_path]
+
+**Sub-task Breakdown:**
+1. [Sub-task 1 description]
+2. [Sub-task 2 description]
+3. [Sub-task 3 description]
+
+**Implementation:**
+[Your code/design/tests/explanation here]
+
+**Verification:**
+☑ Sub-task 1: [Complete/Issue]
+☑ Sub-task 2: [Complete/Issue]
+☑ Sub-task 3: [Complete/Issue]
+```
+
+## IMPORTANT:
+- Execute work items in dependency order
+- Break down BEFORE implementing
+- Validate EACH sub-task
+- Provide concrete, executable output
+
+Begin execution now:"""
         return prompt
 
     def execute_task(self, task_plan: Dict[str, Any], context: str) -> str:

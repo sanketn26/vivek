@@ -47,15 +47,21 @@ def sample_task_plan() -> Dict[str, Any]:
     return {
         "description": "Create unit tests for the project",
         "mode": "sdet",
-        "steps": [
-            "Analyze project structure",
-            "Create test files",
-            "Implement test cases",
-            "Run tests to verify",
-        ],
-        "relevant_files": [
-            "vivek/core/langgraph_orchestrator.py",
-            "vivek/llm/models.py",
+        "work_items": [
+            {
+                "mode": "sdet",
+                "file_path": "tests/test_orchestrator.py",
+                "file_status": "new",
+                "description": "Create unit tests for langgraph_orchestrator.py with pytest",
+                "dependencies": []
+            },
+            {
+                "mode": "sdet",
+                "file_path": "tests/test_models.py",
+                "file_status": "existing",
+                "description": "Add additional test cases for models.py",
+                "dependencies": []
+            }
         ],
         "priority": "normal",
     }

@@ -8,13 +8,22 @@ from typing import TypedDict, List, Dict, Any, Optional
 from typing_extensions import NotRequired
 
 
+class WorkItem(TypedDict):
+    """Individual work item with detailed breakdown"""
+    
+    mode: str  # peer, architect, sdet, coder
+    file_path: str  # Exact file path
+    file_status: str  # "new" or "existing"
+    description: str  # Detailed description/prompt for this work item
+    dependencies: NotRequired[List[str]]  # Other work items this depends on
+
+
 class TaskPlan(TypedDict):
     """Task plan created by planner node"""
 
     description: str
-    mode: str  # peer, architect, sdet, coder
-    steps: List[str]
-    relevant_files: List[str]
+    mode: str  # Overall mode - peer, architect, sdet, coder
+    work_items: List[WorkItem]  # Detailed work items to execute
     priority: str  # low, normal, high
 
 
@@ -62,7 +71,7 @@ class VivekState(TypedDict):
     last_error: NotRequired[str]
 
 
-def initialize_state(user_input: str, context: Dict[str, Any] = None) -> VivekState:
+def initialize_state(user_input: str, context: Optional[Dict[str, Any]] = None) -> VivekState:
     """
     Initialize a new state for processing a user request.
 

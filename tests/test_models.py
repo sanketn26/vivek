@@ -117,13 +117,20 @@ class TestPlannerModel:
         user_input = "Create comprehensive unit tests"
         context = '{"project_summary": "Test project", "current_mode": "peer"}'
 
-        # Mock the provider response
+        # Mock the provider response with new work_items structure
         planner_model.provider.generate.return_value = json.dumps(
             {
                 "description": "Create unit tests for the project",
                 "mode": "sdet",
-                "steps": ["Analyze code", "Write tests", "Run tests"],
-                "relevant_files": ["test_file.py"],
+                "work_items": [
+                    {
+                        "mode": "sdet",
+                        "file_path": "tests/test_file.py",
+                        "file_status": "new",
+                        "description": "Create unit tests with pytest",
+                        "dependencies": []
+                    }
+                ],
                 "priority": "high",
             }
         )
@@ -132,8 +139,9 @@ class TestPlannerModel:
 
         assert result["description"] == "Create unit tests for the project"
         assert result["mode"] == "sdet"
-        assert result["steps"] == ["Analyze code", "Write tests", "Run tests"]
-        assert result["relevant_files"] == ["test_file.py"]
+        assert "work_items" in result
+        assert len(result["work_items"]) == 1
+        assert result["work_items"][0]["file_path"] == "tests/test_file.py"
         assert result["priority"] == "high"
 
     def test_analyze_request_fallback_on_error(self, planner_model):
@@ -146,11 +154,12 @@ class TestPlannerModel:
 
         result = planner_model.analyze_request(user_input, context)
 
-        # Should return fallback values
+        # Should return fallback values with work_items structure
         assert result["description"] == "Code implementation task"
         assert result["mode"] == "coder"
-        assert result["steps"] == ["Implement the requested functionality"]
-        assert result["relevant_files"] == []
+        assert "work_items" in result
+        assert len(result["work_items"]) == 1
+        assert result["work_items"][0]["description"] == "Implement the requested functionality"
         assert result["priority"] == "normal"
 
     def test_analyze_request_partial_json(self, planner_model):
@@ -173,7 +182,7 @@ class TestPlannerModel:
         # Should extract the valid JSON part
         assert result["description"] == "Partial test"
         assert result["mode"] == "coder"
-        assert result["steps"] == ["Implement the requested functionality"]  # fallback
+        assert "work_items" in result  # Should have fallback work_items
 
     def test_review_output_success(self, planner_model):
         """Test successful output review."""
@@ -276,9 +285,9 @@ class TestExecutorModel:
         prompt = call_args[0][0]  # First positional argument
 
         assert sample_task_plan["description"] in prompt
-        assert sample_task_plan["mode"] in prompt
+        # Mode is in the mode_prompt, not in the task itself
         assert context in prompt
-        assert "Steps:" in prompt  # Updated for compressed prompt format
+        assert "WORK ITEMS" in prompt  # Updated for new prompt format
 
     def test_execute_task_different_modes(self, executor_model):
         """Test task execution in different modes."""
@@ -420,11 +429,10 @@ class TestIntegration:
             # Should not raise exception, should use fallbacks
             result = planner.analyze_request("Test", "Context")
 
-            # Should have valid fallback structure
+            # Should have valid fallback structure with work_items
             assert "description" in result
             assert "mode" in result
-            assert "steps" in result
-            assert "relevant_files" in result
+            assert "work_items" in result
             assert "priority" in result
 
     def test_model_initialization_with_different_providers(self):
