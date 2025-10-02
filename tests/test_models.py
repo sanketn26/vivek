@@ -1,6 +1,7 @@
 """
 Tests for LLM model functionality in Vivek project.
 """
+
 import pytest
 import json
 from unittest.mock import Mock, patch, MagicMock
@@ -8,9 +9,7 @@ from unittest.mock import Mock, patch, MagicMock
 from vivek.llm.executor import BaseExecutor
 from vivek.llm.planner import PlannerModel
 from vivek.llm.provider import OllamaProvider
-from vivek.llm.models import (
-    LLMProvider
-)
+from vivek.llm.models import LLMProvider
 
 
 class TestLLMProvider:
@@ -24,8 +23,8 @@ class TestLLMProvider:
     def test_llm_provider_generate_method(self):
         """Test that LLMProvider defines generate method."""
         # Check that the abstract method exists
-        assert hasattr(LLMProvider, 'generate')
-        assert callable(getattr(LLMProvider, 'generate'))
+        assert hasattr(LLMProvider, "generate")
+        assert callable(getattr(LLMProvider, "generate"))
 
 
 class TestOllamaProvider:
@@ -42,7 +41,7 @@ class TestOllamaProvider:
         """Test successful generation with OllamaProvider."""
         provider = OllamaProvider("test-model")
 
-        with patch('ollama.generate') as mock_generate:
+        with patch("ollama.generate") as mock_generate:
             mock_generate.return_value = {"response": "Generated response"}
 
             response = provider.generate("Test prompt")
@@ -52,38 +51,35 @@ class TestOllamaProvider:
 
             # Check that the call was made with correct parameters
             call_args = mock_generate.call_args
-            assert call_args[1]['model'] == "test-model"
-            assert call_args[1]['prompt'] == "Test prompt"
-            assert 'options' in call_args[1]
+            assert call_args[1]["model"] == "test-model"
+            assert call_args[1]["prompt"] == "Test prompt"
+            assert "options" in call_args[1]
 
     def test_ollama_provider_generate_with_options(self, mock_ollama_dependency):
         """Test generation with custom options."""
         provider = OllamaProvider("test-model")
 
-        with patch('ollama.generate') as mock_generate:
+        with patch("ollama.generate") as mock_generate:
             mock_generate.return_value = {"response": "Response with options"}
 
             response = provider.generate(
-                "Test prompt",
-                temperature=0.5,
-                top_p=0.8,
-                max_tokens=1000
+                "Test prompt", temperature=0.5, top_p=0.8, max_tokens=1000
             )
 
             assert response == "Response with options"
 
             # Check that options were passed correctly
             call_args = mock_generate.call_args
-            options = call_args[1]['options']
-            assert options['temperature'] == 0.5
-            assert options['top_p'] == 0.8
-            assert options['num_predict'] == 1000
+            options = call_args[1]["options"]
+            assert options["temperature"] == 0.5
+            assert options["top_p"] == 0.8
+            assert options["num_predict"] == 1000
 
     def test_ollama_provider_generate_error(self, mock_ollama_dependency):
         """Test error handling in OllamaProvider."""
         provider = OllamaProvider("test-model")
 
-        with patch('ollama.generate') as mock_generate:
+        with patch("ollama.generate") as mock_generate:
             mock_generate.side_effect = Exception("Connection failed")
 
             response = provider.generate("Test prompt")
@@ -95,7 +91,7 @@ class TestOllamaProvider:
         """Test handling of Ollama-specific errors."""
         provider = OllamaProvider("test-model")
 
-        with patch('ollama.generate') as mock_generate:
+        with patch("ollama.generate") as mock_generate:
             # Simulate Ollama returning an error response
             mock_generate.return_value = {"error": "Model not found"}
 
@@ -122,13 +118,15 @@ class TestPlannerModel:
         context = '{"project_summary": "Test project", "current_mode": "peer"}'
 
         # Mock the provider response
-        planner_model.provider.generate.return_value = json.dumps({
-            "description": "Create unit tests for the project",
-            "mode": "sdet",
-            "steps": ["Analyze code", "Write tests", "Run tests"],
-            "relevant_files": ["test_file.py"],
-            "priority": "high"
-        })
+        planner_model.provider.generate.return_value = json.dumps(
+            {
+                "description": "Create unit tests for the project",
+                "mode": "sdet",
+                "steps": ["Analyze code", "Write tests", "Run tests"],
+                "relevant_files": ["test_file.py"],
+                "priority": "high",
+            }
+        )
 
         result = planner_model.analyze_request(user_input, context)
 
@@ -183,12 +181,14 @@ class TestPlannerModel:
         executor_output = "Created comprehensive test suite"
 
         # Mock provider response
-        planner_model.provider.generate.return_value = json.dumps({
-            "quality_score": 0.9,
-            "needs_iteration": False,
-            "feedback": "Excellent test coverage",
-            "suggestions": ["Add integration tests", "Include edge cases"]
-        })
+        planner_model.provider.generate.return_value = json.dumps(
+            {
+                "quality_score": 0.9,
+                "needs_iteration": False,
+                "feedback": "Excellent test coverage",
+                "suggestions": ["Add integration tests", "Include edge cases"],
+            }
+        )
 
         result = planner_model.review_output(task_description, executor_output)
 
@@ -218,12 +218,18 @@ class TestPlannerModel:
         task_description = "Implement feature"
         executor_output = "Basic implementation"
 
-        planner_model.provider.generate.return_value = json.dumps({
-            "quality_score": 0.4,
-            "needs_iteration": True,
-            "feedback": "Needs significant improvement",
-            "suggestions": ["Add error handling", "Improve performance", "Add tests"]
-        })
+        planner_model.provider.generate.return_value = json.dumps(
+            {
+                "quality_score": 0.4,
+                "needs_iteration": True,
+                "feedback": "Needs significant improvement",
+                "suggestions": [
+                    "Add error handling",
+                    "Improve performance",
+                    "Add tests",
+                ],
+            }
+        )
 
         result = planner_model.review_output(task_description, executor_output)
 
@@ -257,7 +263,9 @@ class TestExecutorModel:
         context = '{"project_summary": "Test project"}'
 
         # Mock provider response
-        executor_model.provider.generate.return_value = "Successfully implemented the requested feature"
+        executor_model.provider.generate.return_value = (
+            "Successfully implemented the requested feature"
+        )
 
         result = executor_model.execute_task(sample_task_plan, context)
 
@@ -270,7 +278,7 @@ class TestExecutorModel:
         assert sample_task_plan["description"] in prompt
         assert sample_task_plan["mode"] in prompt
         assert context in prompt
-        assert "Steps to complete:" in prompt
+        assert "Steps:" in prompt  # Updated for compressed prompt format
 
     def test_execute_task_different_modes(self, executor_model):
         """Test task execution in different modes."""
@@ -283,7 +291,7 @@ class TestExecutorModel:
                 "mode": mode,
                 "steps": [f"Step for {mode}"],
                 "relevant_files": [],
-                "priority": "normal"
+                "priority": "normal",
             }
 
             executor_model.provider.generate.return_value = f"{mode} mode response"
@@ -303,7 +311,7 @@ class TestExecutorModel:
             "mode": "unknown_mode",  # Invalid mode
             "steps": ["Step"],
             "relevant_files": [],
-            "priority": "normal"
+            "priority": "normal",
         }
 
         executor_model.provider.generate.return_value = "Coder mode response"
@@ -316,7 +324,9 @@ class TestExecutorModel:
         # Verify that the task was executed (the mode doesn't matter for this test)
         call_args = executor_model.provider.generate.call_args
         prompt = call_args[0][0]
-        assert "Test task" in prompt  # Just verify the task description is in the prompt
+        assert (
+            "Test task" in prompt
+        )  # Just verify the task description is in the prompt
 
     def test_execute_task_with_temperature(self, executor_model, sample_task_plan):
         """Test that appropriate temperature is used for task execution."""
@@ -341,13 +351,15 @@ class TestIntegration:
         executor = BaseExecutor(mock_ollama_provider)
 
         # Mock responses
-        planner.provider.generate.return_value = json.dumps({
-            "description": "Integration test",
-            "mode": "coder",
-            "steps": ["Step 1", "Step 2"],
-            "relevant_files": ["test.py"],
-            "priority": "normal"
-        })
+        planner.provider.generate.return_value = json.dumps(
+            {
+                "description": "Integration test",
+                "mode": "coder",
+                "steps": ["Step 1", "Step 2"],
+                "relevant_files": ["test.py"],
+                "priority": "normal",
+            }
+        )
 
         executor.provider.generate.return_value = "Implementation complete"
 
@@ -383,7 +395,7 @@ class TestIntegration:
         provider = OllamaProvider("test-model")
 
         # Test with connection error
-        with patch('ollama.generate') as mock_generate:
+        with patch("ollama.generate") as mock_generate:
             mock_generate.side_effect = Exception("Network error")
 
             response = provider.generate("Test prompt")
@@ -399,7 +411,7 @@ class TestIntegration:
             "No JSON here",  # No JSON
             "{invalid json}",  # Invalid JSON
             '{"valid": "json",}',  # Trailing comma (invalid)
-            "Text { \"valid\": \"json\" } more text",  # JSON in middle
+            'Text { "valid": "json" } more text',  # JSON in middle
         ]
 
         for case in edge_cases:

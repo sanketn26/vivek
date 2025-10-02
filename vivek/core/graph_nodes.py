@@ -8,8 +8,15 @@ import json
 from typing import Dict, Any
 
 from ..llm.planner import PlannerModel
-from .graph_state import VivekState, TaskPlan, ReviewResult, increment_iteration, get_iteration_count
+from .graph_state import (
+    VivekState,
+    TaskPlan,
+    ReviewResult,
+    increment_iteration,
+    get_iteration_count,
+)
 from ..llm.executor import BaseExecutor
+from ..utils.prompt_utils import TokenCounter
 
 
 def create_planner_node(planner: PlannerModel):
@@ -39,6 +46,14 @@ def create_planner_node(planner: PlannerModel):
         # Convert context to string for model
         context_str = json.dumps(context, indent=2)
 
+        # Check context size and warn if approaching limits
+        model_name = getattr(planner.provider, 'model_name', 'qwen2.5-coder:7b')
+        context_tokens = TokenCounter.count_tokens(context_str, model_name)
+        if context_tokens > 15000:  # Warning threshold
+            print(
+                f"Warning: Large context ({context_tokens} tokens) may impact performance"
+            )
+
         # Get feedback from previous iteration if exists
         if get_iteration_count(state) > 0:
             review = state.get("review_result")
@@ -50,7 +65,7 @@ def create_planner_node(planner: PlannerModel):
 
         return {
             "task_plan": task_plan_data,
-            "mode": task_plan_data.get("mode", "coder")
+            "mode": task_plan_data.get("mode", "coder"),
         }
 
     return planner_node
@@ -92,7 +107,7 @@ def create_executor_node(executor: BaseExecutor):
                 context_str += f"\n**Feedback:** {review.get('feedback', '')}"
 
         # Execute task
-        output = executor.execute_task(task_plan, context_str)
+        output = executor.execute_task(dict(task_plan), context_str)
 
         return {"executor_output": output}
 
@@ -125,17 +140,13 @@ def create_reviewer_node(planner: PlannerModel):
 
         # Review output
         review_data = planner.review_output(
-            task_plan.get("description", ""),
-            executor_output
+            task_plan.get("description", ""), executor_output
         )
 
         # Increment iteration counter
         iteration_update = increment_iteration(state)
 
-        return {
-            "review_result": review_data,
-            **iteration_update
-        }
+        return {"review_result": review_data, **iteration_update}
 
     return reviewer_node
 

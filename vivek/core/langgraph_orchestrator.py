@@ -132,9 +132,7 @@ class LangGraphVivekOrchestrator:
 
         return workflow
 
-    async def process_request(
-        self, user_input: str, thread_id: str = "default"
-    ) -> str:
+    async def process_request(self, user_input: str, thread_id: str = "default") -> str:
         """
         Process a user request through the graph.
 
@@ -152,7 +150,9 @@ class LangGraphVivekOrchestrator:
         initial_state = initialize_state(user_input, self.context)
 
         # Use checkpointing with async context manager
-        async with AsyncSqliteSaver.from_conn_string(str(self.checkpoint_db)) as checkpointer:
+        async with AsyncSqliteSaver.from_conn_string(
+            str(self.checkpoint_db)
+        ) as checkpointer:
             # Compile with checkpointer
             app = self.graph.compile(checkpointer=checkpointer)
 
@@ -189,7 +189,9 @@ class LangGraphVivekOrchestrator:
         initial_state = initialize_state(user_input, self.context)
 
         # Use checkpointing with async context manager
-        async with AsyncSqliteSaver.from_conn_string(str(self.checkpoint_db)) as checkpointer:
+        async with AsyncSqliteSaver.from_conn_string(
+            str(self.checkpoint_db)
+        ) as checkpointer:
             # Compile with checkpointer
             app = self.graph.compile(checkpointer=checkpointer)
 
@@ -197,7 +199,9 @@ class LangGraphVivekOrchestrator:
             config = {"configurable": {"thread_id": thread_id}}
 
             # Stream events
-            async for event in app.astream_events(initial_state, config=config, version="v2"):
+            async for event in app.astream_events(
+                initial_state, config=config, version="v2"
+            ):
                 yield event
 
     def switch_mode(self, mode: str) -> str:

@@ -1,6 +1,7 @@
 """
 Pytest configuration and fixtures for Vivek project tests.
 """
+
 import pytest
 import asyncio
 from pathlib import Path
@@ -50,10 +51,13 @@ def sample_task_plan() -> Dict[str, Any]:
             "Analyze project structure",
             "Create test files",
             "Implement test cases",
-            "Run tests to verify"
+            "Run tests to verify",
         ],
-        "relevant_files": ["vivek/core/langgraph_orchestrator.py", "vivek/llm/models.py"],
-        "priority": "normal"
+        "relevant_files": [
+            "vivek/core/langgraph_orchestrator.py",
+            "vivek/llm/models.py",
+        ],
+        "priority": "normal",
     }
 
 
@@ -64,7 +68,7 @@ def sample_review_result() -> Dict[str, Any]:
         "quality_score": 0.85,
         "needs_iteration": False,
         "feedback": "Tests look comprehensive and well-structured",
-        "suggestions": ["Add more edge case tests", "Include integration tests"]
+        "suggestions": ["Add more edge case tests", "Include integration tests"],
     }
 
 
@@ -77,7 +81,7 @@ def mock_orchestrator(mock_ollama_provider, project_root) -> LangGraphVivekOrche
         orchestrator = LangGraphVivekOrchestrator(
             project_root=str(project_root),
             planner_model="test-model",
-            executor_model="test-model"
+            executor_model="test-model",
         )
 
         # Mock the planner and executor models to avoid actual LLM calls
@@ -115,29 +119,30 @@ def temp_config_file(tmp_path) -> Path:
 
     config_file = config_dir / "config.yml"
     config_content = {
-        'project_settings': {
-            'language': ['Python'],
-            'framework': ['FastAPI'],
-            'test_framework': ['pytest'],
-            'package_manager': ['pip']
+        "project_settings": {
+            "language": ["Python"],
+            "framework": ["FastAPI"],
+            "test_framework": ["pytest"],
+            "package_manager": ["pip"],
         },
-        'llm_configuration': {
-            'mode': 'local',
-            'planner_model': 'qwen2.5-coder:7b',
-            'executor_model': 'qwen2.5-coder:7b',
-            'fallback_enabled': True,
-            'auto_switch': True
+        "llm_configuration": {
+            "mode": "local",
+            "planner_model": "qwen2.5-coder:7b",
+            "executor_model": "qwen2.5-coder:7b",
+            "fallback_enabled": True,
+            "auto_switch": True,
         },
-        'preferences': {
-            'default_mode': 'peer',
-            'search_enabled': True,
-            'auto_index': True,
-            'privacy_mode': False
-        }
+        "preferences": {
+            "default_mode": "peer",
+            "search_enabled": True,
+            "auto_index": True,
+            "privacy_mode": False,
+        },
     }
 
     import yaml
-    with open(config_file, 'w') as f:
+
+    with open(config_file, "w") as f:
         yaml.dump(config_content, f)
 
     return config_file
@@ -151,7 +156,7 @@ def sample_user_inputs() -> list:
         "Implement a new feature for user authentication",
         "Fix the bug in the data processing module",
         "Add documentation for the API endpoints",
-        "Optimize the database queries for better performance"
+        "Optimize the database queries for better performance",
     ]
 
 
@@ -159,9 +164,9 @@ def sample_user_inputs() -> list:
 def sample_cli_args() -> Dict[str, Any]:
     """Provide sample CLI arguments for testing."""
     return {
-        'mode': 'local',
-        'planner_model': 'qwen2.5-coder:7b',
-        'executor_model': 'qwen2.5-coder:7b'
+        "mode": "local",
+        "planner_model": "qwen2.5-coder:7b",
+        "executor_model": "qwen2.5-coder:7b",
     }
 
 

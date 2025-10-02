@@ -10,6 +10,7 @@ from typing_extensions import NotRequired
 
 class TaskPlan(TypedDict):
     """Task plan created by planner node"""
+
     description: str
     mode: str  # peer, architect, sdet, coder
     steps: List[str]
@@ -19,6 +20,7 @@ class TaskPlan(TypedDict):
 
 class ReviewResult(TypedDict):
     """Review result from planner node"""
+
     quality_score: float  # 0.0 to 1.0
     needs_iteration: bool
     feedback: str
@@ -71,11 +73,7 @@ def initialize_state(user_input: str, context: Dict[str, Any] = None) -> VivekSt
     Returns:
         Initialized VivekState
     """
-    return VivekState(
-        user_input=user_input,
-        context=context or {},
-        iteration_count=0
-    )
+    return VivekState(user_input=user_input, context=context or {}, iteration_count=0)
 
 
 def get_iteration_count(state: VivekState) -> int:
