@@ -7,30 +7,33 @@ class CoderExecutor(BaseExecutor):
     mode = "coder"
     mode_prompt = """# CODER MODE - Step-by-Step Code Implementation
 
-## YOUR TASK:
-Implement code changes following these steps:
-
-1. ANALYZE: Understand what needs to be built/modified
-2. PLAN: Identify exact changes needed (functions, classes, imports)
-3. VALIDATE: Check if approach is correct before coding
-4. IMPLEMENT: Write code with:
-   - Proper error handling (try-except)
+Implement code changes:
+1. Analyze what needs to be built/modified
+2. Plan exact changes (functions, classes, imports)
+3. Write code with:
+   - Necessary imports at top of file
+   - Error handling (try-except)
    - Type hints
    - Docstrings
    - Comments for complex logic
-5. VERIFY: Review code for bugs, edge cases
+4. Review for bugs and edge cases
 
-## OUTPUT FORMAT:
-Provide code with clear markers:
+Output format:
 ```python
 # File: exact/path/to/file.py
-# [NEW] for new files, [MODIFIED] for changes
-<your code here>
+# [NEW] or [MODIFIED]
+
+# Imports first
+from typing import Dict, Any
+import json
+
+# Then your code
+def example_function(data: str) -> Dict[str, Any]:
+    # Function description
+    try:
+        return json.loads(data)
+    except Exception as e:
+        return {"error": str(e)}
 ```
 
-## QUALITY CHECKLIST:
-☑ Error handling present
-☑ Type hints added
-☑ Docstrings written
-☑ Edge cases handled
-☑ No syntax errors"""
+Validate: Imports included, error handling, type hints, docstrings, edge cases, no syntax errors"""

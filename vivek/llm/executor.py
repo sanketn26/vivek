@@ -3,6 +3,11 @@ import importlib
 
 from vivek.llm.models import LLMProvider
 from vivek.utils.prompt_utils import PromptCompressor
+from vivek.core.message_protocol import (
+    execution_complete,
+    clarification_needed,
+    error_occurred,
+)
 
 
 class BaseExecutor:
@@ -46,68 +51,106 @@ class BaseExecutor:
 
         prompt = f"""{mode_instruction}
 
-## CURRENT CONTEXT:
-{compressed_context}
+CONTEXT: {compressed_context}
 
-## OVERALL TASK:
-{task_plan.get('description', 'Execute the task')}
+TASK: {task_plan.get('description', 'Execute the task')}
 
-## WORK ITEMS TO EXECUTE:
+WORK ITEMS:
 {work_items_str}
 
-## EXECUTION PROCESS:
+PROCESS:
+1. Execute work items in dependency order (check dependencies array - items with [] go first)
+2. For each work item, break into 3-5 sub-tasks (specific, testable, ordered)
+3. Implement each sub-task following mode guidelines
+4. Verify completion: mark "Complete" or "Issue: [reason]" if blocked
+5. Combine outputs and ensure all dependencies satisfied
 
-### PHASE 1: Work Item Breakdown (for each work item)
-For each work item above:
-1. ANALYZE: Understand the specific requirement
-2. SUB-TASKS: Break into 3-5 atomic sub-tasks
-   - Each sub-task must be: specific, testable, independent
-   - Sub-tasks must be in dependency order
-3. VALIDATE: Check if breakdown covers all requirements
-
-### PHASE 2: Incremental Implementation
-For each sub-task:
-1. IMPLEMENT: Execute the sub-task following mode guidelines
-2. VERIFY: Check output meets sub-task requirements
-3. CHECKPOINT: Confirm completion before next sub-task
-
-### PHASE 3: Integration
-1. Combine all sub-task outputs
-2. Verify work item completion
-3. Check dependencies are satisfied
-
-## OUTPUT REQUIREMENTS:
-For EACH work item, provide:
-
+OUTPUT FORMAT (for each work item):
 ```
 ### Work Item [N]: [file_path]
 
-**Sub-task Breakdown:**
-1. [Sub-task 1 description]
-2. [Sub-task 2 description]
-3. [Sub-task 3 description]
+**Sub-tasks:**
+1. [description]
+2. [description]
+3. [description]
 
 **Implementation:**
-[Your code/design/tests/explanation here]
+[code/design/tests/explanation]
 
-**Verification:**
-☑ Sub-task 1: [Complete/Issue]
-☑ Sub-task 2: [Complete/Issue]
-☑ Sub-task 3: [Complete/Issue]
+**Status:**
+☑ Sub-task 1: Complete
+☑ Sub-task 2: Issue: [reason] (if any problem, otherwise Complete)
+☑ Sub-task 3: Complete
 ```
 
-## IMPORTANT:
-- Execute work items in dependency order
-- Break down BEFORE implementing
-- Validate EACH sub-task
-- Provide concrete, executable output
-
-Begin execution now:"""
+Begin execution:"""
         return prompt
 
-    def execute_task(self, task_plan: Dict[str, Any], context: str) -> str:
-        prompt = self.build_prompt(task_plan, context)
-        return self.provider.generate(prompt, temperature=0.2)
+    def execute_task(self, task_plan: Dict[str, Any], context: str) -> Dict[str, Any]:
+        """Execute task and return structured message to orchestrator.
+
+        Returns:
+            execution_complete message with output, OR
+            clarification_needed message if ambiguities found, OR
+            error message if execution fails
+        """
+        try:
+            # Check for ambiguities before execution
+            clarification_check = self._check_for_ambiguities(task_plan, context)
+            if clarification_check:
+                return clarification_needed(
+                    questions=clarification_check["questions"],
+                    from_node=f"executor_{self.mode}",
+                    **clarification_check.get("metadata", {})
+                )
+
+            # Execute implementation
+            prompt = self.build_prompt(task_plan, context)
+            output = self.provider.generate(prompt, temperature=0.2)
+
+            # Parse output to extract metadata
+            metadata = self._extract_metadata(output, task_plan)
+
+            # Return execution_complete message
+            return execution_complete(
+                output=output,
+                from_node=f"executor_{self.mode}",
+                **metadata
+            )
+
+        except Exception as e:
+            # Return error message
+            return error_occurred(
+                error=str(e),
+                from_node=f"executor_{self.mode}",
+                task_plan=task_plan.get("description", "unknown"),
+                mode=self.mode
+            )
+
+    def _check_for_ambiguities(self, task_plan: Dict[str, Any], context: str) -> Dict[str, Any]:
+        """Check if clarification needed before execution.
+
+        Override in subclasses for mode-specific ambiguity detection.
+
+        Returns:
+            Dict with 'questions' and 'metadata' if clarification needed, None otherwise
+        """
+        # Base implementation: no ambiguity check
+        # Subclasses can override for specific checks
+        return None
+
+    def _extract_metadata(self, output: str, task_plan: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract metadata from executor output.
+
+        Returns:
+            Dict with metadata fields like files_modified, work_items_completed, etc.
+        """
+        # Basic metadata extraction
+        work_items = task_plan.get("work_items", [])
+        return {
+            "work_items_count": len(work_items),
+            "mode": self.mode,
+        }
 
 
 def get_executor(mode: str, provider: LLMProvider) -> BaseExecutor:

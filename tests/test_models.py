@@ -137,12 +137,14 @@ class TestPlannerModel:
 
         result = planner_model.analyze_request(user_input, context)
 
-        assert result["description"] == "Create unit tests for the project"
-        assert result["mode"] == "sdet"
-        assert "work_items" in result
-        assert len(result["work_items"]) == 1
-        assert result["work_items"][0]["file_path"] == "tests/test_file.py"
-        assert result["priority"] == "high"
+        # Result is now a message, extract payload
+        task_plan = result["payload"]["output"]
+        assert task_plan["description"] == "Create unit tests for the project"
+        assert task_plan["mode"] == "sdet"
+        assert "work_items" in task_plan
+        assert len(task_plan["work_items"]) == 1
+        assert task_plan["work_items"][0]["file_path"] == "tests/test_file.py"
+        assert task_plan["priority"] == "high"
 
     def test_analyze_request_fallback_on_error(self, planner_model):
         """Test fallback behavior when JSON parsing fails."""
@@ -155,12 +157,13 @@ class TestPlannerModel:
         result = planner_model.analyze_request(user_input, context)
 
         # Should return fallback values with work_items structure
-        assert result["description"] == "Code implementation task"
-        assert result["mode"] == "coder"
-        assert "work_items" in result
-        assert len(result["work_items"]) == 1
-        assert result["work_items"][0]["description"] == "Implement the requested functionality"
-        assert result["priority"] == "normal"
+        task_plan = result["payload"]["output"]
+        assert task_plan["description"] == "Code implementation task"
+        assert task_plan["mode"] == "coder"
+        assert "work_items" in task_plan
+        assert len(task_plan["work_items"]) == 1
+        assert task_plan["work_items"][0]["description"] == "Implement the requested functionality"
+        assert task_plan["priority"] == "normal"
 
     def test_analyze_request_partial_json(self, planner_model):
         """Test handling of partial JSON responses."""
@@ -180,9 +183,10 @@ class TestPlannerModel:
         result = planner_model.analyze_request(user_input, context)
 
         # Should extract the valid JSON part
-        assert result["description"] == "Partial test"
-        assert result["mode"] == "coder"
-        assert "work_items" in result  # Should have fallback work_items
+        task_plan = result["payload"]["output"]
+        assert task_plan["description"] == "Partial test"
+        assert task_plan["mode"] == "coder"
+        assert "work_items" in task_plan  # Should have fallback work_items
 
     def test_review_output_success(self, planner_model):
         """Test successful output review."""
@@ -201,10 +205,12 @@ class TestPlannerModel:
 
         result = planner_model.review_output(task_description, executor_output)
 
-        assert result["quality_score"] == 0.9
-        assert result["needs_iteration"] is False
-        assert result["feedback"] == "Excellent test coverage"
-        assert len(result["suggestions"]) == 2
+        # Result is now a message, extract payload
+        review = result["payload"]["output"]
+        assert review["quality_score"] == 0.9
+        assert review["needs_iteration"] is False
+        assert review["feedback"] == "Excellent test coverage"
+        assert len(review["suggestions"]) == 2
 
     def test_review_output_fallback_on_error(self, planner_model):
         """Test fallback behavior when review parsing fails."""
@@ -217,10 +223,11 @@ class TestPlannerModel:
         result = planner_model.review_output(task_description, executor_output)
 
         # Should return fallback values
-        assert result["quality_score"] == 0.7
-        assert result["needs_iteration"] is False
-        assert result["feedback"] == "Review completed"
-        assert result["suggestions"] == []
+        review = result["payload"]["output"]
+        assert review["quality_score"] == 0.7
+        assert review["needs_iteration"] is False
+        assert review["feedback"] == "Review completed"
+        assert review["suggestions"] == []
 
     def test_review_output_with_iteration_needed(self, planner_model):
         """Test review output that requires iteration."""
@@ -242,9 +249,10 @@ class TestPlannerModel:
 
         result = planner_model.review_output(task_description, executor_output)
 
-        assert result["quality_score"] == 0.4
-        assert result["needs_iteration"] is True
-        assert len(result["suggestions"]) == 3
+        review = result["payload"]["output"]
+        assert review["quality_score"] == 0.4
+        assert review["needs_iteration"] is True
+        assert len(review["suggestions"]) == 3
 
 
 class TestExecutorModel:
@@ -278,7 +286,9 @@ class TestExecutorModel:
 
         result = executor_model.execute_task(sample_task_plan, context)
 
-        assert "Successfully implemented" in result
+        # Result is now a message, extract payload
+        output = result["payload"]["output"]
+        assert "Successfully implemented" in output
 
         # Verify the provider was called with correct prompt structure
         call_args = executor_model.provider.generate.call_args
@@ -328,7 +338,8 @@ class TestExecutorModel:
         result = executor_model.execute_task(task_plan, context)
 
         # Should still work and use coder mode as fallback
-        assert result == "Coder mode response"
+        output = result["payload"]["output"]
+        assert output == "Coder mode response"
 
         # Verify that the task was executed (the mode doesn't matter for this test)
         call_args = executor_model.provider.generate.call_args
@@ -376,8 +387,10 @@ class TestIntegration:
         user_input = "Test integration"
         context = "Test context"
 
-        task_plan = planner.analyze_request(user_input, context)
-        result = executor.execute_task(task_plan, context)
+        task_plan_message = planner.analyze_request(user_input, context)
+        task_plan = task_plan_message["payload"]["output"]
+        result_message = executor.execute_task(task_plan, context)
+        result = result_message["payload"]["output"]
 
         assert result == "Implementation complete"
         assert task_plan["mode"] == "coder"
@@ -392,8 +405,10 @@ class TestIntegration:
         executor.provider.generate.return_value = "Error in execution"
 
         # Should handle errors gracefully
-        task_plan = planner.analyze_request("Test", "Context")
-        result = executor.execute_task(task_plan, "Context")
+        task_plan_message = planner.analyze_request("Test", "Context")
+        task_plan = task_plan_message["payload"]["output"]
+        result_message = executor.execute_task(task_plan, "Context")
+        result = result_message["payload"]["output"]
 
         assert result == "Error in execution"
         # Should fallback to coder mode
@@ -429,11 +444,12 @@ class TestIntegration:
             # Should not raise exception, should use fallbacks
             result = planner.analyze_request("Test", "Context")
 
-            # Should have valid fallback structure with work_items
-            assert "description" in result
-            assert "mode" in result
-            assert "work_items" in result
-            assert "priority" in result
+            # Should have valid fallback structure with work_items (in payload)
+            task_plan = result["payload"]["output"]
+            assert "description" in task_plan
+            assert "mode" in task_plan
+            assert "work_items" in task_plan
+            assert "priority" in task_plan
 
     def test_model_initialization_with_different_providers(self):
         """Test model initialization with different provider types."""

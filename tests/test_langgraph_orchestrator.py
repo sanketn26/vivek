@@ -30,6 +30,7 @@ from vivek.core.graph_nodes import (
     create_reviewer_node,
     format_response_node,
 )
+from vivek.core.message_protocol import execution_complete, clarification_needed
 
 
 @pytest.fixture
@@ -44,19 +45,26 @@ def temp_project_dir():
 def mock_planner():
     """Mock planner model"""
     planner = Mock()
-    planner.analyze_request.return_value = {
-        "description": "Test task",
-        "mode": "coder",
-        "steps": ["Step 1", "Step 2"],
-        "relevant_files": ["test.py"],
-        "priority": "normal",
-    }
-    planner.review_output.return_value = {
-        "quality_score": 0.8,
-        "needs_iteration": False,
-        "feedback": "Looks good",
-        "suggestions": ["Add error handling"],
-    }
+    # Return message protocol format
+    planner.analyze_request.return_value = execution_complete(
+        output={
+            "description": "Test task",
+            "mode": "coder",
+            "steps": ["Step 1", "Step 2"],
+            "relevant_files": ["test.py"],
+            "priority": "normal",
+        },
+        from_node="planner"
+    )
+    planner.review_output.return_value = execution_complete(
+        output={
+            "quality_score": 0.8,
+            "needs_iteration": False,
+            "feedback": "Looks good",
+            "suggestions": ["Add error handling"],
+        },
+        from_node="reviewer"
+    )
     return planner
 
 
@@ -64,7 +72,11 @@ def mock_planner():
 def mock_executor():
     """Mock executor model"""
     executor = Mock()
-    executor.execute_task.return_value = "Generated code output"
+    # Return message protocol format
+    executor.execute_task.return_value = execution_complete(
+        output="Generated code output",
+        from_node="executor_coder"
+    )
     return executor
 
 
@@ -291,8 +303,10 @@ class TestLangGraphOrchestrator:
 
                     response = await orchestrator.process_request("test request")
 
-                    assert isinstance(response, str)
-                    assert len(response) > 0
+                    assert isinstance(response, dict)
+                    assert response["status"] == "complete"
+                    assert "output" in response
+                    assert len(response["output"]) > 0
 
     def test_switch_mode(self, temp_project_dir):
         """Test switching modes"""
@@ -328,18 +342,24 @@ class TestLangGraphOrchestrator:
         """Test that iteration happens on low quality output"""
         # Setup mock to return low quality first, then high quality
         mock_planner.review_output.side_effect = [
-            {
-                "quality_score": 0.5,
-                "needs_iteration": True,
-                "feedback": "Needs improvement",
-                "suggestions": [],
-            },
-            {
-                "quality_score": 0.9,
-                "needs_iteration": False,
-                "feedback": "Much better",
-                "suggestions": [],
-            },
+            execution_complete(
+                output={
+                    "quality_score": 0.5,
+                    "needs_iteration": True,
+                    "feedback": "Needs improvement",
+                    "suggestions": [],
+                },
+                from_node="reviewer"
+            ),
+            execution_complete(
+                output={
+                    "quality_score": 0.9,
+                    "needs_iteration": False,
+                    "feedback": "Much better",
+                    "suggestions": [],
+                },
+                from_node="reviewer"
+            ),
         ]
 
         with patch("vivek.core.langgraph_orchestrator.OllamaProvider"):

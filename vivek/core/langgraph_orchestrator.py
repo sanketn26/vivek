@@ -91,11 +91,19 @@ class LangGraphVivekOrchestrator:
 
     def _build_graph(self) -> StateGraph:
         """
-        Build the LangGraph workflow.
+        Build the LangGraph workflow with conditional routing for clarifications.
 
         Returns:
             Configured StateGraph
         """
+        # Import routing functions
+        from .graph_nodes import (
+            route_planner,
+            route_executor,
+            route_reviewer,
+            clarification_node,
+        )
+
         # Create workflow
         workflow = StateGraph(VivekState)
 
@@ -108,31 +116,50 @@ class LangGraphVivekOrchestrator:
         workflow.add_node("planner", planner_node)
         workflow.add_node("executor", executor_node)
         workflow.add_node("reviewer", reviewer_node)
+        workflow.add_node("clarification", clarification_node)
         workflow.add_node("formatter", format_response_node)
 
         # Set entry point
         workflow.set_entry_point("planner")
 
-        # Add edges
-        workflow.add_edge("planner", "executor")
-        workflow.add_edge("executor", "reviewer")
-
-        # Conditional edge for iteration
+        # Conditional edges with clarification routing
         workflow.add_conditional_edges(
-            "reviewer",
-            should_iterate,
+            "planner",
+            route_planner,
             {
-                "iterate": "executor",  # Go back to executor with feedback
-                "finish": "formatter",  # Move to formatting
+                "executor": "executor",
+                "clarification": "clarification",
             },
         )
+
+        workflow.add_conditional_edges(
+            "executor",
+            route_executor,
+            {
+                "reviewer": "reviewer",
+                "clarification": "clarification",
+            },
+        )
+
+        workflow.add_conditional_edges(
+            "reviewer",
+            route_reviewer,
+            {
+                "executor": "executor",  # Iteration
+                "clarification": "clarification",
+                "format_response": "formatter",
+            },
+        )
+
+        # Clarification ends the flow (pause for user input)
+        workflow.add_edge("clarification", END)
 
         # Final edge
         workflow.add_edge("formatter", END)
 
         return workflow
 
-    async def process_request(self, user_input: str, thread_id: str = "default") -> str:
+    async def process_request(self, user_input: str, thread_id: str = "default") -> Dict[str, Any]:
         """
         Process a user request through the graph.
 
@@ -141,7 +168,7 @@ class LangGraphVivekOrchestrator:
             thread_id: Thread ID for session persistence
 
         Returns:
-            Final response string
+            Dict with status and response/questions
         """
         # Update context with current mode
         self.context["current_mode"] = self.current_mode
@@ -153,8 +180,11 @@ class LangGraphVivekOrchestrator:
         async with AsyncSqliteSaver.from_conn_string(
             str(self.checkpoint_db)
         ) as checkpointer:
-            # Compile with checkpointer
-            app = self.graph.compile(checkpointer=checkpointer)
+            # Compile with checkpointer and interrupt before clarification
+            app = self.graph.compile(
+                checkpointer=checkpointer,
+                interrupt_before=["clarification"]
+            )
 
             # Configuration for checkpointing
             config = {"configurable": {"thread_id": thread_id}}
@@ -162,12 +192,79 @@ class LangGraphVivekOrchestrator:
             # Invoke graph
             final_state = await app.ainvoke(initial_state, config=config)
 
+        # Check if paused for clarification
+        if final_state.get("needs_clarification"):
+            return {
+                "status": "awaiting_clarification",
+                "questions": final_state.get("clarification_questions", []),
+                "from_node": final_state.get("clarification_from", "unknown"),
+                "clarification_output": final_state.get("clarification_output", ""),
+                "thread_id": thread_id
+            }
+
         # Update context from final state (for next iteration)
         if "task_plan" in final_state:
             task_plan = final_state["task_plan"]
             self.context["working_files"] = task_plan.get("relevant_files", [])
 
-        return final_state.get("final_response", "No response generated")
+        return {
+            "status": "complete",
+            "output": final_state.get("final_response", "No response generated")
+        }
+
+    async def resume_with_answers(self, thread_id: str, answers: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Resume execution after user provides clarification answers.
+
+        Args:
+            thread_id: Thread ID to resume
+            answers: User's answers to clarification questions
+
+        Returns:
+            Dict with status and response/questions (might pause again)
+        """
+        async with AsyncSqliteSaver.from_conn_string(
+            str(self.checkpoint_db)
+        ) as checkpointer:
+            # Compile with checkpointer
+            app = self.graph.compile(
+                checkpointer=checkpointer,
+                interrupt_before=["clarification"]
+            )
+
+            # Configuration
+            config = {"configurable": {"thread_id": thread_id}}
+
+            # Get current state
+            state_snapshot = await app.aget_state(config)
+            current_state = state_snapshot.values
+
+            # Update state with answers
+            current_state["clarification_answers"] = answers
+            current_state["needs_clarification"] = False
+
+            # Add answers to context for planner/executor to use
+            if "context" not in current_state:
+                current_state["context"] = {}
+            current_state["context"]["user_clarifications"] = answers
+
+            # Resume execution
+            final_state = await app.ainvoke(current_state, config=config)
+
+        # Check if paused again
+        if final_state.get("needs_clarification"):
+            return {
+                "status": "awaiting_clarification",
+                "questions": final_state.get("clarification_questions", []),
+                "from_node": final_state.get("clarification_from", "unknown"),
+                "clarification_output": final_state.get("clarification_output", ""),
+                "thread_id": thread_id
+            }
+
+        return {
+            "status": "complete",
+            "output": final_state.get("final_response", "No response generated")
+        }
 
     async def stream_process_request(
         self, user_input: str, thread_id: str = "default"

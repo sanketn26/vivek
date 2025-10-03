@@ -60,12 +60,28 @@ def create_planner_node(planner: PlannerModel):
             if review:
                 context_str += f"\n\n**Previous Iteration Feedback:**\n{review.get('feedback', '')}"
 
-        # Analyze request
-        task_plan_data = planner.analyze_request(user_input, context_str)
+        # Analyze request - planner now returns a message
+        message = planner.analyze_request(user_input, context_str)
+
+        # Check message type
+        from ..core.message_protocol import MessageType
+
+        if message["type"] == MessageType.CLARIFICATION_NEEDED.value:
+            # Planner needs clarification
+            return {
+                "needs_clarification": True,
+                "clarification_from": message["from_node"],
+                "clarification_questions": message["payload"]["questions"],
+                "partial_task_plan": message.get("metadata", {}).get("partial_plan")
+            }
+
+        # Extract task plan from execution_complete message
+        task_plan_data = message["payload"]["output"]
 
         return {
             "task_plan": task_plan_data,
             "mode": task_plan_data.get("mode", "coder"),
+            "needs_clarification": False
         }
 
     return planner_node
@@ -106,10 +122,35 @@ def create_executor_node(executor: BaseExecutor):
             if review:
                 context_str += f"\n**Feedback:** {review.get('feedback', '')}"
 
-        # Execute task
-        output = executor.execute_task(dict(task_plan), context_str)
+        # Execute task - executor now returns a message
+        message = executor.execute_task(dict(task_plan), context_str)
 
-        return {"executor_output": output}
+        # Check message type
+        from ..core.message_protocol import MessageType
+
+        if message["type"] == MessageType.CLARIFICATION_NEEDED.value:
+            # Executor needs clarification
+            return {
+                "needs_clarification": True,
+                "clarification_from": message["from_node"],
+                "clarification_questions": message["payload"]["questions"]
+            }
+
+        if message["type"] == MessageType.ERROR.value:
+            # Executor encountered error
+            error_msg = message["payload"]["error"]
+            return {
+                "executor_output": f"Error: {error_msg}",
+                "needs_clarification": False
+            }
+
+        # Extract output from execution_complete message
+        output = message["payload"]["output"]
+
+        return {
+            "executor_output": output,
+            "needs_clarification": False
+        }
 
     return executor_node
 
@@ -138,15 +179,33 @@ def create_reviewer_node(planner: PlannerModel):
         task_plan = state.get("task_plan", {})
         executor_output = state.get("executor_output", "")
 
-        # Review output
-        review_data = planner.review_output(
+        # Review output - planner.review_output now returns a message
+        message = planner.review_output(
             task_plan.get("description", ""), executor_output
         )
+
+        # Check message type
+        from ..core.message_protocol import MessageType
+
+        if message["type"] == MessageType.CLARIFICATION_NEEDED.value:
+            # Reviewer needs clarification
+            return {
+                "needs_clarification": True,
+                "clarification_from": message["from_node"],
+                "clarification_questions": message["payload"]["questions"]
+            }
+
+        # Extract review data from execution_complete message
+        review_data = message["payload"]["output"]
 
         # Increment iteration counter
         iteration_update = increment_iteration(state)
 
-        return {"review_result": review_data, **iteration_update}
+        return {
+            "review_result": review_data,
+            "needs_clarification": False,
+            **iteration_update
+        }
 
     return reviewer_node
 
@@ -186,3 +245,99 @@ def format_response_node(state: VivekState) -> Dict[str, str]:
         formatted += f"\n\n✨ **Quality Score:** {quality:.1f}/1.0"
 
     return {"final_response": formatted}
+
+
+# Routing Functions for Conditional Edges
+
+def route_planner(state: VivekState) -> str:
+    """Route after planner based on clarification need.
+
+    Returns:
+        "clarification" if clarification needed, else "executor"
+    """
+    if state.get("needs_clarification"):
+        return "clarification"
+    return "executor"
+
+
+def route_executor(state: VivekState) -> str:
+    """Route after executor based on clarification need.
+
+    Returns:
+        "clarification" if clarification needed, else "reviewer"
+    """
+    if state.get("needs_clarification"):
+        return "clarification"
+    return "reviewer"
+
+
+def route_reviewer(state: VivekState) -> str:
+    """Route after reviewer based on clarification, iteration, or completion.
+
+    Returns:
+        "clarification" if clarification needed
+        "executor" if needs iteration and under max iterations
+        "format_response" if done or max iterations reached
+    """
+    # Check clarification first
+    if state.get("needs_clarification"):
+        return "clarification"
+
+    # Check if iteration needed
+    review_result = state.get("review_result", {})
+    needs_iteration = review_result.get("needs_iteration", False)
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = 3
+
+    if needs_iteration and iteration_count < max_iterations:
+        return "executor"
+
+    # Done - format response
+    return "format_response"
+
+
+def clarification_node(state: VivekState) -> Dict[str, Any]:
+    """Format clarification questions for user display.
+
+    Args:
+        state: Current graph state with clarification info
+
+    Returns:
+        State updates with formatted clarification output
+    """
+    from_node = state.get("clarification_from", "unknown")
+    questions = state.get("clarification_questions", [])
+
+    # Format questions for display
+    formatted_questions = []
+    for i, q in enumerate(questions, 1):
+        q_text = f"{i}. {q['question']}"
+
+        # Add options if it's a choice question
+        if q.get("type") == "choice" and q.get("options"):
+            options_str = ", ".join(q["options"])
+            q_text += f"\n   Options: {options_str}"
+
+        # Add context if provided
+        if q.get("context"):
+            q_text += f"\n   Context: {q['context']}"
+
+        formatted_questions.append(q_text)
+
+    # Build output message
+    output_lines = [
+        f"🤔 Clarification needed from {from_node}:",
+        "",
+        *formatted_questions,
+        "",
+        "Please provide your answers to continue."
+    ]
+
+    clarification_output = "\n".join(output_lines)
+
+    return {
+        "needs_clarification": True,
+        "status": "paused",
+        "clarification_output": clarification_output,
+        "clarification_from": from_node
+    }

@@ -7,43 +7,25 @@ class SDETExecutor(BaseExecutor):
     mode = "sdet"
     mode_prompt = """# SDET MODE - Systematic Testing Approach
 
-## YOUR TASK:
-Create comprehensive test strategy following these steps:
-
-1. ANALYZE CODE: Understand functionality to test
-2. IDENTIFY SCENARIOS:
-   - Happy path cases
-   - Edge cases
-   - Error conditions
-   - Boundary values
-3. TEST DESIGN: For each scenario:
-   - Input data
-   - Expected output
-   - Validation criteria
-4. IMPLEMENT TESTS: Write test code with:
-   - Clear test names (test_<scenario>)
+Create comprehensive test strategy:
+1. Analyze code to understand functionality
+2. Identify scenarios: happy path, edge cases, error conditions, boundary values
+3. Design tests: input data, expected output, validation criteria
+4. Implement tests using:
+   - Clear names (test_scenario_description)
    - Arrange-Act-Assert pattern
    - Proper assertions
-   - Test fixtures/mocks if needed
-5. COVERAGE: Ensure all critical paths tested
+   - Fixtures/mocks as needed
+5. Ensure coverage of all critical paths
 
-## OUTPUT FORMAT:
+Example structure:
 ```python
-# File: tests/test_<module>.py
 import pytest
 
-def test_<scenario>():
-    # Arrange
-    <setup>
-    # Act
-    <execute>
-    # Assert
-    <validate>
+def test_login_success():
+    # Arrange: user = create_user()
+    # Act: result = login(user)
+    # Assert: assert result.success
 ```
 
-## QUALITY CHECKLIST:
-☑ All scenarios covered
-☑ Clear test names
-☑ Proper assertions
-☑ Edge cases included
-☑ Tests are independent"""
+Validate: All scenarios covered, clear names, proper assertions, edge cases, independent tests"""

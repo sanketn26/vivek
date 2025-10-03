@@ -70,6 +70,15 @@ class VivekState(TypedDict):
     error: NotRequired[str]
     last_error: NotRequired[str]
 
+    # Clarification flow
+    needs_clarification: NotRequired[bool]
+    clarification_from: NotRequired[str]  # Which node needs clarification
+    clarification_questions: NotRequired[List[Dict[str, Any]]]
+    clarification_answers: NotRequired[Dict[str, str]]
+    clarification_output: NotRequired[str]  # Formatted output for user
+    partial_task_plan: NotRequired[Dict[str, Any]]  # Partial plan before clarification
+    status: NotRequired[str]  # "paused", "running", etc.
+
 
 def initialize_state(user_input: str, context: Optional[Dict[str, Any]] = None) -> VivekState:
     """
