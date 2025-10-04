@@ -375,6 +375,185 @@ for chunk in provider.generate_stream(prompt):
 - Only if it doesn't complicate core Ollama workflow
 - Consider after core features (file operations) are complete
 
+### 12. Dynamic Agent Diversity ⭐ **ENHANCED AGENT SYSTEM**
+**Priority:** High
+**Status:** Not Started
+**Impact:** Enables specialized agents for different coding tasks and improves overall system capabilities
+**Location:** `vivek/core/` and `vivek/llm/`
+
+**Why This Matters:**
+- Current executor modes are good but limited to predefined roles
+- Specialized agents (error checker, security auditor, optimization agent) could improve quality
+- Runtime agent management allows customization per project/user needs
+
+**Tasks:**
+- [ ] **Implement dynamic agent registry** - Runtime addition/removal of specialized agents
+- [ ] **Design selection logic** - Route tasks to best-fit agents based on type/priority/context
+- [ ] **Create user settings** - Customize active agents for different project types/languages
+- [ ] **Enable LLM-driven generation** - Periodic agent role/prompt generation based on metrics/feedback
+- [ ] **Build parallel operation interfaces** - Multiple agents sharing context efficiently
+
+**New Agent Types to Consider:**
+- Error checker agent (linting, type checking, runtime error detection)
+- Security auditor agent (vulnerability scanning, secure coding practices)
+- Optimization agent (performance profiling, code optimization suggestions)
+- Context enricher agents (documentation, testing, architectural analysis)
+
+**Files to Create:**
+- **New:** `vivek/core/agent_registry.py` - Dynamic agent registration and management
+- **New:** `vivek/core/agent_selector.py` - Task routing and agent selection logic
+- **New:** `vivek/agents/` - Directory for specialized agent implementations
+
+### 13. Tool-Augmented Execution ⭐ **EXTERNAL TOOL INTEGRATION**
+**Priority:** Critical
+**Status:** Not Started
+**Impact:** Enables actual code execution, testing, and external data access for comprehensive coding assistance
+**Location:** `vivek/tools/` and executor classes
+
+**Why This Matters:**
+- Current system can't execute code or access external resources
+- Real coding assistance requires testing, documentation lookup, and code execution
+- Tool integration enables sandboxed testing and external API access
+
+**Tasks:**
+- [ ] **Extend executor modes** - Add tool invocation capabilities (code sandbox, search APIs, documentation tools)
+- [ ] **Define tool protocols** - Standardized interfaces for agents to request tool access with fallbacks
+- [ ] **Develop sandbox safety** - Local execution with security/privacy mechanisms
+- [ ] **Integrate tool results** - Feed external tool outputs back into sub-task context
+- [ ] **Provide fallback strategies** - Graceful handling when tools are unavailable or inconclusive
+
+**Tool Categories:**
+- Code execution sandbox (local testing, validation)
+- Search engine APIs (documentation, examples, best practices)
+- Documentation indexing (architectural context, API references)
+- Code analysis tools (linting, complexity metrics, dependency analysis)
+
+**Files to Create:**
+- **New:** `vivek/tools/tool_registry.py` - Tool registration and management
+- **New:** `vivek/tools/code_sandbox.py` - Safe code execution environment
+- **New:** `vivek/tools/search_api.py` - External search and documentation access
+- **New:** `vivek/tools/sandbox_security.py` - Security and privacy mechanisms
+
+### 14. Iterative Message Passing ⭐ **ENHANCED COMMUNICATION**
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Improves quality through multi-round feedback between planner and executor agents
+**Location:** `vivek/core/graph_nodes.py` and message protocol
+
+**Why This Matters:**
+- Current iteration is basic (quality threshold check)
+- More sophisticated communication could catch issues earlier and improve results
+- Multi-round feedback allows for progressive refinement
+
+**Tasks:**
+- [ ] **Enhance communication protocol** - Support multiple rounds of partial output sharing
+- [ ] **Introduce feedback loop** - Planner reviews partial results and suggests corrections
+- [ ] **Implement message history** - Track changes, comments, and decisions per iteration
+- [ ] **Allow peer reviewers** - Additional agents can join iterative exchange for quality
+- [ ] **Establish iteration limits** - Prevent endless refinement cycles with timeouts
+
+**Communication Enhancements:**
+- Partial result sharing before completion
+- Structured feedback with specific suggestions
+- Change tracking and rationale documentation
+- Multi-agent review participation
+- Configurable iteration policies
+
+**Files to Modify:**
+- `vivek/core/graph_nodes.py` - Enhanced iteration logic
+- `vivek/message_protocol.py` - Extended message types for iterative feedback
+- **New:** `vivek/core/iteration_manager.py` - Manages iterative refinement cycles
+
+### 15. Principled Termination Strategies ⭐ **SMART TERMINATION**
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Prevents wasted computation while ensuring quality through intelligent stopping criteria
+**Location:** `vivek/core/graph_nodes.py` and termination logic
+
+**Why This Matters:**
+- Current termination is basic (max iterations + quality threshold)
+- More sophisticated criteria could improve efficiency and quality
+- Different termination rules needed for different task types
+
+**Tasks:**
+- [ ] **Design termination criteria** - Confidence scores and validation thresholds
+- [ ] **Implement judging agent** - Reviews outputs to decide if refinement needed
+- [ ] **Provide custom rules** - Termination based on task criticality and resources
+- [ ] **Build monitoring dashboards** - Alerts for pending termination or manual review needs
+- [ ] **Optimize pipeline flow** - Reduce computation once satisfactory quality reached
+
+**Termination Strategies:**
+- Confidence score thresholds from judging agents
+- Validation rule sets (syntax, logic, completeness checks)
+- Resource-based limits (time, token budget, iteration count)
+- Task-specific criteria (simple vs complex tasks)
+- User-defined custom rules
+
+**Files to Create:**
+- **New:** `vivek/core/termination_judge.py` - Judging agent for termination decisions
+- **New:** `vivek/core/termination_rules.py` - Configurable termination criteria
+- **New:** `vivek/utils/quality_metrics.py` - Quality assessment utilities
+
+### 16. Majority/Consensus Voting ⭐ **QUALITY ASSURANCE**
+**Priority:** Medium
+**Status:** Not Started
+**Impact:** Improves reliability through multiple agent consensus for critical decisions
+**Location:** `vivek/core/` and output pipeline
+
+**Why This Matters:**
+- Single agent decisions can be unreliable
+- Consensus voting provides confidence and catches errors
+- Weighted voting allows expertise-based decision making
+
+**Tasks:**
+- [ ] **Develop voting mechanism** - Aggregate outputs from multiple agents
+- [ ] **Assign vote weights** - Based on past accuracy, specialization, training recency
+- [ ] **Integrate voting results** - Feed consensus into main output pipeline
+- [ ] **Use for multiple decisions** - Code generation, architecture, testing, documentation
+- [ ] **Implement audit logs** - Track voting results for transparency and improvement
+
+**Voting Applications:**
+- Final code output validation
+- Architectural decision consensus
+- Test case generation agreement
+- Documentation quality assessment
+- Error detection and correction
+
+**Files to Create:**
+- **New:** `vivek/core/voting_system.py` - Consensus voting implementation
+- **New:** `vivek/core/agent_weights.py` - Dynamic agent weighting system
+- **New:** `vivek/utils/voting_audit.py` - Audit logging for voting decisions
+
+### 17. Automatic Agent Evolution ⭐ **ADAPTIVE SYSTEM**
+**Priority:** Low
+**Status:** Not Started
+**Impact:** Long-term system improvement through automated learning and adaptation
+**Location:** `vivek/core/` and evolution management
+
+**Why This Matters:**
+- Static agents may become outdated
+- Performance data can inform system improvements
+- Automated evolution reduces maintenance burden
+
+**Tasks:**
+- [ ] **Create lifecycle manager** - Triggers periodic prompt/regeneration/role updates
+- [ ] **Store historical data** - Task outputs and performance for evolution analysis
+- [ ] **Enable manual override** - Developer-initiated evolution cycles
+- [ ] **Track and test evolutions** - Isolated testing before merging changes
+- [ ] **Document changes** - Version control and reproducibility for evolved agents
+
+**Evolution Triggers:**
+- Performance metric degradation
+- New error patterns detected
+- User feedback analysis
+- Task success/failure trends
+- Manual intervention requests
+
+**Files to Create:**
+- **New:** `vivek/core/evolution_manager.py` - Automated evolution system
+- **New:** `vivek/core/performance_tracker.py` - Historical performance data storage
+- **New:** `vivek/utils/evolution_testing.py` - Isolated testing environment
+
 ---
 
 ## 📊 SUCCESS METRICS
@@ -397,10 +576,15 @@ for chunk in provider.generate_stream(prompt):
 - [ ] Project indexing speeds up file selection by 10x
 - [ ] Respects .gitignore and project structure
 
-**Phase 4 Success (Polish):**
+**Phase 4 Success (Enhanced Features & TUMIX Lessons):**
 - [ ] Review command provides useful code feedback
 - [ ] Metrics show system efficiency improvements
 - [ ] User customization enables team-specific workflows
+- [ ] Dynamic agent diversity improves task specialization
+- [ ] Tool-augmented execution enables comprehensive coding assistance
+- [ ] Iterative message passing enhances quality through feedback
+- [ ] Principled termination prevents wasted computation
+- [ ] Consensus voting improves decision reliability
 - [ ] Documentation is comprehensive and accurate
 
 ---
@@ -435,13 +619,18 @@ for chunk in provider.generate_stream(prompt):
 **Key Deliverable:** Can actually edit code in projects
 
 ### **Weeks 7-10: Enhancement (Phase 4)**
-**Goal:** Polish and extend functionality
+**Goal:** Polish and extend functionality with advanced agent capabilities
 1. Add review/analyze commands
 2. Implement metrics and observability
 3. Add configuration and customization
-4. Update documentation
+4. Implement tool-augmented execution (code sandbox, external APIs)
+5. Add dynamic agent diversity (specialized agents, runtime management)
+6. Enhance iterative message passing (multi-round feedback)
+7. Implement principled termination strategies (smart stopping criteria)
+8. Add consensus voting for quality assurance
+9. Update documentation
 
-**Key Deliverable:** Feature-complete v0.2.0 release
+**Key Deliverable:** Feature-complete v0.3.0 with advanced agent capabilities
 
 ---
 
@@ -459,11 +648,16 @@ for chunk in provider.generate_stream(prompt):
 - 🔍 Smart context management
 - **Target:** 6-8 weeks
 
-### **v0.3.0 (Phase 4) - "Feature Complete"**
+### **v0.3.0 (Phase 4) - "Advanced Agent System"**
 - 📝 Review and analyze commands
 - 📈 Metrics and observability
 - ⚙️ User customization
-- **Target:** 10-12 weeks
+- 🤖 Dynamic agent diversity and specialization
+- 🔧 Tool-augmented execution (sandbox, APIs)
+- 🔄 Enhanced iterative communication
+- 🛑 Principled termination strategies
+- 🗳️ Consensus voting for quality
+- **Target:** 12-16 weeks
 
 ### **v0.4.0 (Future) - "Cloud Hybrid"**
 - ☁️ Cloud model fallback (OpenAI, Anthropic)
@@ -517,9 +711,8 @@ for chunk in provider.generate_stream(prompt):
 - When new requirements emerge from testing
 - When version roadmap shifts
 
-**Current Status:** Updated 2025-09-30 to reflect:
-- LangGraph is complete (Phase 0)
-- Prompt optimization is #1 priority (Phase 1)
-- Model testing must happen early (Phase 2)
-- File operations are critical (Phase 3)
-- Realistic 3B-7B model target (not 1B-3B)
+**Current Status:** Updated 2025-10-04 to include TUMIX-inspired enhancements:
+- Added 6 new advanced features from TUMIX lessons (Dynamic Agent Diversity, Tool-Augmented Execution, Iterative Message Passing, Principled Termination, Consensus Voting, Automatic Evolution)
+- Prioritized Tool-Augmented Execution as critical for actual code editing capabilities
+- Extended Phase 4 timeline to accommodate advanced agent features
+- Updated success metrics and version roadmap accordingly
