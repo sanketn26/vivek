@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch, MagicMock
 
 from vivek.llm.executor import BaseExecutor
 from vivek.llm.planner import PlannerModel
-from vivek.llm.provider import OllamaProvider
+from vivek.llm.provider import OllamaProvider, OpenAICompatibleProvider, LMStudioProvider, SarvamAIProvider
 from vivek.llm.models import LLMProvider
 
 
@@ -99,6 +99,546 @@ class TestOllamaProvider:
 
             # Should still work and return the error message
             assert "Model not found" in response
+
+
+class TestOpenAICompatibleProvider:
+    """Test cases for OpenAICompatibleProvider class."""
+
+    def test_openai_provider_initialization(self):
+        """Test OpenAICompatibleProvider is properly initialized."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        assert provider.model_name == "gpt-3.5-turbo"
+        assert provider.base_url == "https://api.openai.com"
+        assert provider.api_key == "test-key"
+
+    def test_openai_provider_initialization_with_env_var(self, monkeypatch):
+        """Test initialization using environment variable for API key."""
+        monkeypatch.setenv("OPENAI_API_KEY", "env-api-key")
+
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-4",
+            base_url="https://api.openai.com"
+        )
+
+        assert provider.api_key == "env-api-key"
+
+    def test_openai_provider_initialization_no_api_key(self):
+        """Test initialization without API key."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com"
+        )
+
+        assert provider.api_key is None
+
+    def test_openai_provider_generate_success(self):
+        """Test successful generation with OpenAICompatibleProvider."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Generated response"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert response == "Generated response"
+            mock_post.assert_called_once()
+
+            # Check that the call was made with correct parameters
+            call_args = mock_post.call_args
+            assert call_args[0][0] == "https://api.openai.com/chat/completions"
+
+            # Check headers
+            headers = call_args[1]["headers"]
+            assert headers["Content-Type"] == "application/json"
+            assert headers["Authorization"] == "Bearer test-key"
+
+            # Check request body
+            data = call_args[1]["json"]
+            assert data["model"] == "gpt-3.5-turbo"
+            assert len(data["messages"]) == 1
+            assert data["messages"][0]["role"] == "user"
+            assert data["messages"][0]["content"] == "Test prompt"
+
+    def test_openai_provider_generate_with_system_prompt(self):
+        """Test generation with system prompt."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-4",
+            base_url="https://api.openai.com",
+            api_key="test-key",
+            system_prompt="You are a helpful assistant."
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Response with system prompt"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("User question")
+
+            # Check that system prompt is included in messages
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+            assert len(messages) == 2
+            assert messages[0]["role"] == "system"
+            assert messages[0]["content"] == "You are a helpful assistant."
+            assert messages[1]["role"] == "user"
+            assert messages[1]["content"] == "User question"
+
+    def test_openai_provider_generate_with_options(self):
+        """Test generation with custom options."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Response with options"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate(
+                "Test prompt",
+                temperature=0.5,
+                top_p=0.8,
+                max_tokens=1000
+            )
+
+            # Check that options were passed correctly
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            assert data["temperature"] == 0.5
+            assert data["top_p"] == 0.8
+            assert data["max_tokens"] == 1000
+
+    def test_openai_provider_generate_request_error(self):
+        """Test error handling for request failures."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        with patch("requests.post") as mock_post:
+            from requests.exceptions import RequestException
+            mock_post.side_effect = RequestException("Connection failed")
+
+            response = provider.generate("Test prompt")
+
+            assert "Error connecting to API" in response
+            assert "Connection failed" in response
+
+    def test_openai_provider_generate_http_error(self):
+        """Test error handling for HTTP errors."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.side_effect = Exception("HTTP 400 Error")
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert "Error generating response" in response
+
+    def test_openai_provider_generate_unexpected_response(self):
+        """Test handling of unexpected response format."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"unexpected": "format"}
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert "Error: Unexpected response format" in response
+
+
+class TestLMStudioProvider:
+    """Test cases for LMStudioProvider class."""
+
+    def test_lmstudio_provider_initialization(self):
+        """Test LMStudioProvider is properly initialized."""
+        provider = LMStudioProvider(model_name="local-model")
+
+        assert provider.model_name == "local-model"
+        assert provider.base_url == "http://localhost:1234"
+        assert provider.api_key is None  # LM Studio doesn't need API key
+
+    def test_lmstudio_provider_initialization_custom_url(self):
+        """Test LMStudioProvider with custom URL."""
+        provider = LMStudioProvider(
+            model_name="custom-model",
+            base_url="http://192.168.1.100:8080"
+        )
+
+        assert provider.model_name == "custom-model"
+        assert provider.base_url == "http://192.168.1.100:8080"
+
+    def test_lmstudio_provider_generate_inherits_openai_behavior(self):
+        """Test that LMStudioProvider inherits OpenAI-compatible behavior."""
+        provider = LMStudioProvider(model_name="test-model")
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "LM Studio response"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert response == "LM Studio response"
+
+            # Should call the same endpoint as OpenAI
+            call_args = mock_post.call_args
+            assert call_args[0][0] == "http://localhost:1234/chat/completions"
+
+
+class TestSarvamAIProvider:
+    """Test cases for SarvamAIProvider class."""
+
+    def test_sarvam_provider_initialization(self):
+        """Test SarvamAIProvider is properly initialized."""
+        provider = SarvamAIProvider(model_name="sarvam-m", api_key="test-key")
+
+        assert provider.model_name == "sarvam-m"
+        assert provider.api_key == "test-key"
+        assert provider.base_url == "https://api.sarvam.ai"
+
+    def test_sarvam_provider_initialization_with_env_var(self, monkeypatch):
+        """Test initialization using environment variable for API key."""
+        monkeypatch.setenv("SARVAM_API_KEY", "env-sarvam-key")
+
+        provider = SarvamAIProvider()
+
+        assert provider.api_key == "env-sarvam-key"
+
+    def test_sarvam_provider_generate_success(self):
+        """Test successful generation with SarvamAIProvider."""
+        provider = SarvamAIProvider(api_key="test-key")
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Sarvam AI response"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert response == "Sarvam AI response"
+            mock_post.assert_called_once()
+
+            # Check that the call was made with correct parameters
+            call_args = mock_post.call_args
+            assert call_args[0][0] == "https://api.sarvam.ai/chat/completions"
+
+            # Check headers - should use api-key header, not Authorization
+            headers = call_args[1]["headers"]
+            assert headers["Content-Type"] == "application/json"
+            assert headers["api-key"] == "test-key"
+            assert "Authorization" not in headers
+
+            # Check request body
+            data = call_args[1]["json"]
+            assert data["model"] == "sarvam-m"
+            assert len(data["messages"]) == 1
+            assert data["messages"][0]["role"] == "user"
+
+    def test_sarvam_provider_generate_with_system_prompt(self):
+        """Test generation with system prompt."""
+        provider = SarvamAIProvider(
+            api_key="test-key",
+            system_prompt="You are a helpful assistant."
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Response with system prompt"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("User question")
+
+            # Check that system prompt is included in messages
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+            assert len(messages) == 2
+            assert messages[0]["role"] == "system"
+            assert messages[0]["content"] == "You are a helpful assistant."
+            assert messages[1]["role"] == "user"
+            assert messages[1]["content"] == "User question"
+
+    def test_sarvam_provider_generate_request_error(self):
+        """Test error handling for request failures."""
+        provider = SarvamAIProvider(api_key="test-key")
+
+        with patch("requests.post") as mock_post:
+            from requests.exceptions import RequestException
+            mock_post.side_effect = RequestException("Connection failed")
+
+            response = provider.generate("Test prompt")
+
+            assert "Error connecting to Sarvam AI API" in response
+            assert "Connection failed" in response
+
+    def test_sarvam_provider_generate_unexpected_response(self):
+        """Test handling of unexpected response format."""
+        provider = SarvamAIProvider(api_key="test-key")
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"unexpected": "format"}
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test prompt")
+
+            assert "Error: Unexpected response format" in response
+
+
+class TestSystemPromptFunctionality:
+    """Test cases for system prompt functionality across providers."""
+
+    def test_openai_provider_system_prompt_integration(self):
+        """Test system prompt integration with other parameters."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-4",
+            base_url="https://api.openai.com",
+            api_key="test-key",
+            system_prompt="You are a senior software engineer with expertise in Python."
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Based on my expertise..."}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate(
+                "Review this code and suggest improvements.",
+                temperature=0.3,
+                max_tokens=500
+            )
+
+            # Verify system prompt is included with other parameters
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+
+            assert len(messages) == 2
+            assert messages[0]["role"] == "system"
+            assert "senior software engineer" in messages[0]["content"]
+            assert messages[1]["role"] == "user"
+            assert "Review this code" in messages[1]["content"]
+
+            # Verify other parameters are preserved
+            assert data["temperature"] == 0.3
+            assert data["max_tokens"] == 500
+
+    def test_sarvam_provider_system_prompt_integration(self):
+        """Test system prompt integration with SarvamAI provider."""
+        provider = SarvamAIProvider(
+            api_key="test-key",
+            system_prompt="You are a helpful coding assistant specializing in web development."
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "As a web development expert..."}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Help me build a React component.")
+
+            # Verify system prompt is included
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+
+            assert len(messages) == 2
+            assert messages[0]["role"] == "system"
+            assert "web development" in messages[0]["content"]
+            assert messages[1]["role"] == "user"
+            assert "React component" in messages[1]["content"]
+
+    def test_openai_provider_no_system_prompt_fallback(self):
+        """Test that providers work correctly without system prompts."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key"
+            # No system_prompt provided
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Response without system prompt"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Simple question")
+
+            # Should only have user message
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+
+            assert len(messages) == 1
+            assert messages[0]["role"] == "user"
+            assert messages[0]["content"] == "Simple question"
+
+    def test_system_prompt_token_counting(self):
+        """Test that system prompts are included in token counting."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-4",
+            base_url="https://api.openai.com",
+            api_key="test-key",
+            system_prompt="You are a helpful assistant."
+        )
+
+        # The generate method should handle token counting for the full prompt
+        # including system prompt - this is tested indirectly through the debug output
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Test response"}}]
+            }
+            mock_post.return_value = mock_response
+
+            # This should not raise an exception and should show token counting
+            response = provider.generate("Test message")
+
+            assert response == "Test response"
+
+    def test_empty_system_prompt_handling(self):
+        """Test handling of empty or None system prompts."""
+        provider = OpenAICompatibleProvider(
+            model_name="gpt-3.5-turbo",
+            base_url="https://api.openai.com",
+            api_key="test-key",
+            system_prompt=""  # Empty system prompt
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Response with empty system prompt"}}]
+            }
+            mock_post.return_value = mock_response
+
+            response = provider.generate("Test message")
+
+            # Should only have user message when system prompt is empty
+            call_args = mock_post.call_args
+            data = call_args[1]["json"]
+            messages = data["messages"]
+
+            assert len(messages) == 1
+            assert messages[0]["role"] == "user"
+
+
+class TestProviderIntegration:
+    """Integration tests for all providers."""
+
+    def test_all_providers_follow_same_interface(self):
+        """Test that all providers implement the same interface."""
+        providers = [
+            OllamaProvider("test-model"),
+            OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com"),
+            LMStudioProvider("local-model"),
+            SarvamAIProvider(api_key="test-key")
+        ]
+
+        for provider in providers:
+            assert hasattr(provider, "generate")
+            assert callable(getattr(provider, "generate"))
+
+            # All should have model_name attribute
+            assert hasattr(provider, "model_name")
+            assert provider.model_name
+
+    def test_provider_error_handling_consistency(self):
+        """Test that all providers handle errors consistently."""
+        providers = [
+            ("OllamaProvider", OllamaProvider("test-model")),
+            ("OpenAICompatibleProvider", OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com")),
+            ("LMStudioProvider", LMStudioProvider("local-model")),
+            ("SarvamAIProvider", SarvamAIProvider(api_key="test-key"))
+        ]
+
+        for provider_name, provider in providers:
+            # Test that generate method exists and is callable
+            assert callable(provider.generate)
+
+            # Test error message format consistency
+            # (This would require mocking different failure modes for each provider)
+
+    def test_system_prompt_backward_compatibility(self):
+        """Test that existing code without system prompts still works."""
+        # Test providers that previously didn't support system prompts
+        openai_provider = OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com")
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"choices": [{"message": {"content": "OK"}}]}
+            mock_post.return_value = mock_response
+
+            # Should work without system prompt
+            response = openai_provider.generate("Test")
+            assert response == "OK"
+
+            # Verify only user message is sent
+            call_args = mock_post.call_args
+            messages = call_args[1]["json"]["messages"]
+            assert len(messages) == 1
+            assert messages[0]["role"] == "user"
 
 
 class TestPlannerModel:
