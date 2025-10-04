@@ -27,7 +27,7 @@ Traditional AI assistants use one model trying to handle everything. Vivek's **c
 
 ### 🔒 **Privacy-First Architecture**
 - **100% local processing** - your code never leaves your machine
-- **No cloud dependencies** - works completely offline  
+- **No cloud dependencies** - works completely offline
 - **Enterprise-ready** - meets the strictest privacy requirements
 - **You own your data** - no vendor lock-in or data harvesting
 
@@ -46,13 +46,14 @@ Traditional AI assistants use one model trying to handle everything. Vivek's **c
 ### 🎭 **Specialized Work Modes**
 - **`/peer`** - Collaborative programming and discussion
 - **`/architect`** - System design and architectural decisions
-- **`/sdet`** - Testing strategies and quality assurance  
+- **`/sdet`** - Testing strategies and quality assurance
 - **`/coder`** - Direct implementation and code generation
 
-### ⚡ **Efficient Performance**
-- **Two 7B models** use less RAM than one 14B model
-- **Faster responses** through specialized processing
-- **Better quality** via built-in review loops
+### ⚡ **Optimized for Small LLMs**
+- **Work item breakdown** - Tasks decomposed into file-level, atomic operations
+- **Structured prompting** - Clear step-by-step instructions guide model thinking
+- **Token efficiency** - Optimized prompts fit within 8K-32K context windows
+- **Incremental validation** - Quality checks at each step prevent cascading errors
 
 ## 🚀 Quick Start
 
@@ -93,7 +94,7 @@ vivek chat
 You: Add JWT authentication to my FastAPI app
 
 🧠 Planner: Breaking down task in coder mode...
-⚙️ Executor: Completed implementation...  
+⚙️ Executor: Completed implementation...
 🔍 Planner: Quality score 0.9/1.0
 
 [CODER MODE] Here's a complete JWT authentication system:
@@ -117,7 +118,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 💡 Suggestions:
 • Add refresh token functionality
-• Implement rate limiting for login attempts  
+• Implement rate limiting for login attempts
 • Consider adding 2FA for enhanced security
 ```
 
@@ -132,7 +133,7 @@ You: How should I structure a microservices system for e-commerce?
 
 ## Service Decomposition Strategy
 1. **User Service** - Authentication, profiles, preferences
-2. **Product Catalog** - Inventory, search, recommendations  
+2. **Product Catalog** - Inventory, search, recommendations
 3. **Order Management** - Cart, checkout, order processing
 4. **Payment Gateway** - Secure payment processing
 5. **Notification Service** - Email, SMS, push notifications
@@ -156,7 +157,7 @@ You: Review my test coverage for the user authentication module
 
 ## Coverage Analysis
 ✅ **Unit Tests**: 85% coverage - Good baseline
-❌ **Integration Tests**: Missing API endpoint tests  
+❌ **Integration Tests**: Missing API endpoint tests
 ❌ **Security Tests**: No penetration testing
 ⚠️  **Load Tests**: No performance validation
 
@@ -166,7 +167,7 @@ You: Review my test coverage for the user authentication module
    - JWT token manipulation
    - Rate limiting validation
 
-2. **Integration Tests**  
+2. **Integration Tests**
    - End-to-end authentication flows
    - Database transaction testing
    - External service mocking
@@ -180,7 +181,7 @@ You: Review my test coverage for the user authentication module
 # Vivek.md configuration
 ## LLM Configuration
 - **Planner Model**: qwen2.5-coder:7b
-- **Executor Model**: deepseek-coder:6.7b  
+- **Executor Model**: deepseek-coder:6.7b
 - **Mode**: local
 - **Fallback**: cloud (optional)
 
@@ -212,80 +213,6 @@ vivek config set test_framework "pytest,jest"
 
 *\*Thanks to automatic context condensation*
 
-## 🛠️ Development Workflow Integration
-
-### Git Hooks
-```bash
-# Pre-commit code review
-vivek review --mode=sdet --files=staged
-
-# Pre-push architecture validation  
-vivek analyze --mode=architect --scope=changed
-```
-
-### IDE Integration
-```bash
-# VS Code extension (coming soon)
-vivek ide install vscode
-
-# Vim/Neovim plugin
-vivek ide install nvim
-```
-
-### CI/CD Pipeline
-```yaml
-# GitHub Actions example
-- name: Vivek Code Review
-  run: |
-    Vivek review --mode=sdet --output=sarif
-    Vivek analyze --mode=architect --check=patterns
-```
-
-## 🏗️ Architecture Deep Dive
-
-### How the Dual-Brain System Works
-
-```mermaid
-graph TD
-    A[User Request] --> B[Planner: Analyze Intent]
-    B --> C[Planner: Choose Mode & Strategy]  
-    C --> D[Planner: Break Into Steps]
-    D --> E[Executor: Implement Solution]
-    E --> F[Planner: Review Quality]
-    F --> G{Quality Check}
-    G -->|Good| H[Planner: Condense Context]
-    G -->|Needs Work| I[Planner: Provide Feedback]
-    I --> E
-    H --> J[Present to User]
-```
-
-### Context Condensation Magic
-
-Instead of keeping full conversation history:
-
-```python
-# Before condensation (10 interactions): 15KB context
-raw_context = """
-User: Add login endpoint
-Planner: Need JWT setup, validation middleware, user routes...
-Executor: [500 lines of detailed JWT implementation]
-User: Add logout functionality  
-Planner: Token invalidation strategy...
-Executor: [200 lines of logout implementation]
-# ... 8 more interactions
-"""
-
-# After condensation: 1.5KB essential context  
-condensed_context = {
-    "project_type": "FastAPI authentication system",
-    "completed": ["JWT login", "logout", "middleware"],
-    "architecture": "JWT + Redis blacklist pattern",
-    "active_files": ["auth.py", "models.py", "routes.py"],
-    "next_steps": ["refresh tokens", "rate limiting"],
-    "patterns": ["dependency injection", "async handlers"]
-}
-```
-
 ## 🤝 Contributing
 
 vivek is built by developers, for developers. We welcome contributions!
@@ -293,15 +220,15 @@ vivek is built by developers, for developers. We welcome contributions!
 ### Development Setup
 ```bash
 git clone https://github.com/sanketn26/vivek
-cd vivek  
+cd vivek
 pip install -e ".[dev]"
-Vivek setup --dev
+vivek setup --dev
 ```
 
 ### Areas We Need Help
 - 🔌 **IDE Integrations** (VS Code, Vim, IntelliJ)
 - 🌐 **Web Search Integration** for augmented responses
-- 📁 **File Operations** (smart editing, project analysis)  
+- 📁 **File Operations** (smart editing, project analysis)
 - 🔄 **Cloud Fallback** (OpenAI, Anthropic API integration)
 - 🎨 **UI/UX Improvements** for the CLI interface
 - 📚 **Documentation** and tutorials
@@ -313,39 +240,32 @@ Vivek setup --dev
 4. Run the test suite (`pytest`)
 5. Submit a pull request
 
-## 📚 Documentation
-
-- 📖 **[User Guide](docs/user-guide.md)** - Complete usage documentation
-- 🏗️ **[Architecture Guide](docs/architecture.md)** - Technical deep dive
-- 🔧 **[Configuration Reference](docs/configuration.md)** - All settings explained
-- 🤝 **[API Reference](docs/api.md)** - For integrations and extensions
-- ❓ **[FAQ](docs/faq.md)** - Common questions answered
-
 ## 🗺️ Roadmap
 
-### 🚀 **v0.2.0 - Context Master** (Next 2 months)
-- [ ] Advanced context condensation strategies
-- [ ] Project-wide file indexing and analysis
-- [ ] Web search integration for augmented responses
-- [ ] File editing with intelligent diff previews
+### 🚀 **v0.1.5 - "Stable Foundation"** (Current)
+- ✅ LangGraph orchestration with state persistence
+- ✅ Optimized prompts for small LLMs (3B-7B)
+- ✅ Work item breakdown architecture
+- ✅ Token-efficient context management
+- 🔧 Robust error handling and logging
 
-### 🌟 **v0.3.0 - Cloud Hybrid** (3-4 months)
-- [ ] Cloud model fallback (OpenAI, Anthropic)
-- [ ] Smart routing (local vs cloud based on complexity)
-- [ ] Cost tracking and usage analytics
-- [ ] Team collaboration features
+### 🌟 **v0.2.0 - "Context Master"** (Next 2 months)
+- 📁 File operations and smart editing
+- 🔍 Project indexing and search
+- 🌐 Web search integration
+- 📊 Performance metrics and observability
 
-### 🏢 **v0.4.0 - Enterprise Ready** (5-6 months)
-- [ ] VS Code extension
-- [ ] Advanced security and compliance features
-- [ ] Custom model fine-tuning workflows
-- [ ] Enterprise deployment tools
+### ☁️ **v0.3.0 - "Cloud Hybrid"** (3-4 months)
+- 🔄 Cloud model fallback (OpenAI, Anthropic)
+- 🤝 Team collaboration features
+- 💰 Cost tracking and usage analytics
+- ⚙️ Advanced customization options
 
-### 🔮 **v1.0.0 - The Future** (6+ months)
-- [ ] Multi-language IDE integrations
-- [ ] Advanced code understanding and refactoring
-- [ ] Autonomous coding workflows
-- [ ] Community model marketplace
+### 🏢 **v0.4.0 - "Enterprise Ready"** (5-6 months)
+- 🔌 VS Code extension
+- 🔒 Advanced security and compliance
+- 🎨 Custom model fine-tuning workflows
+- 📈 Enterprise deployment tools
 
 ## 💰 Why Choose Vivek Over Alternatives?
 
@@ -353,7 +273,7 @@ Vivek setup --dev
 |---------|---------|-------------|----------------|---------|
 | **Privacy** | 🟢 100% Local | 🔴 Cloud Only | 🔴 Cloud Only | 🔴 Cloud Only |
 | **Cost** | 🟢 Free* | 🔴 $20+/month | 🔴 $10/month | 🔴 $20+/month |
-| **Context Management** | 🟢 Smart Condensation | 🟡 Limited | 🟡 Limited | 🟡 Standard |
+| **Context Management** | 🟢 Smart Condensation | 🟡 Limited | 🟡 Limited | 🟡 Limited |
 | **Specialized Modes** | 🟢 4 Specialized | 🔴 General Purpose | 🔴 Code-focused | 🟡 Some modes |
 | **Quality Control** | 🟢 Built-in Review | 🔴 Manual | 🔴 Manual | 🔴 Manual |
 | **Offline Capability** | 🟢 Full Offline | 🔴 None | 🔴 None | 🔴 None |
@@ -368,24 +288,24 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - **Ollama Team** - For making local LLM deployment simple
-- **Qwen & DeepSeek Teams** - For excellent coding-focused models  
+- **Qwen & DeepSeek Teams** - For excellent coding-focused models
 - **Rich & Click** - For beautiful Python CLI experiences
 - **The Open Source Community** - For the tools and inspiration
 
 ## 📞 Support & Community
 
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/sanketn26/Vivek/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/sanketn26/Vivek/discussions)  
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/sanketn26/Vivek/discussions)
 - 🐦 **Twitter**: [@VivekAI](https://twitter.com/Vivekai)
 
 ---
 
 <div align="center">
-  
+
 **🎯 Vivek: Privacy-first, collaborative AI brain design for coding excellence.**
 
-[Get Started](https://github.com/sanketn26/Vivek#quick-start) • 
-[Documentation](docs/) • 
+[Get Started](https://github.com/sanketn26/Vivek#quick-start) •
+[Documentation](COPILOT.md) •
 [Contributing](CONTRIBUTING.md)
 
 </div>

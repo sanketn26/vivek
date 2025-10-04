@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import importlib
 
 from vivek.llm.models import LLMProvider
@@ -31,7 +31,7 @@ class BaseExecutor:
 
         # Get work items from task plan
         work_items = task_plan.get("work_items", [])
-        
+
         # Build work items summary
         work_items_summary = []
         for i, item in enumerate(work_items, 1):
@@ -40,12 +40,14 @@ class BaseExecutor:
             desc = item.get("description", "")
             deps = item.get("dependencies", [])
             deps_str = f" (depends on: {', '.join(map(str, deps))})" if deps else ""
-            
+
             work_items_summary.append(
-                f"{i}. {status} {file_path}\n   Mode: {item.get('mode', 'coder')}\n   Task: {desc}{deps_str}"
+                f"{i}. {status} {file_path}\n   Mode: {item.get('mode', 'coder')}\n   "
+                f"Task: {desc}{deps_str}"
             )
-        
-        work_items_str = "\n".join(work_items_summary) if work_items_summary else "No specific work items defined"
+
+        work_items_str = "\n".join(work_items_summary) if work_items_summary else \
+                          "No specific work items defined"
 
         mode_instruction = self.mode_prompt or f"Mode: {self.mode}"
 
@@ -127,7 +129,8 @@ Begin execution:"""
                 mode=self.mode
             )
 
-    def _check_for_ambiguities(self, task_plan: Dict[str, Any], context: str) -> Dict[str, Any]:
+    def _check_for_ambiguities(self, task_plan: Dict[str, Any], context: str) \
+            -> Optional[Dict[str, Any]]:
         """Check if clarification needed before execution.
 
         Override in subclasses for mode-specific ambiguity detection.

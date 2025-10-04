@@ -10,7 +10,7 @@ from typing_extensions import NotRequired
 
 class WorkItem(TypedDict):
     """Individual work item with detailed breakdown"""
-    
+
     mode: str  # peer, architect, sdet, coder
     file_path: str  # Exact file path
     file_status: str  # "new" or "existing"

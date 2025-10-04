@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, AsyncIterator
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langchain_core.runnables import RunnableConfig
 
 from ..llm.planner import PlannerModel
 
@@ -170,27 +171,38 @@ class LangGraphVivekOrchestrator:
         Returns:
             Dict with status and response/questions
         """
-        # Update context with current mode
-        self.context["current_mode"] = self.current_mode
+        try:
+            # Update context with current mode
+            self.context["current_mode"] = self.current_mode
 
-        # Initialize state
-        initial_state = initialize_state(user_input, self.context)
+            # Initialize state
+            initial_state = initialize_state(user_input, self.context)
 
-        # Use checkpointing with async context manager
-        async with AsyncSqliteSaver.from_conn_string(
-            str(self.checkpoint_db)
-        ) as checkpointer:
-            # Compile with checkpointer and interrupt before clarification
-            app = self.graph.compile(
-                checkpointer=checkpointer,
-                interrupt_before=["clarification"]
-            )
+            # Use checkpointing with async context manager
+            async with AsyncSqliteSaver.from_conn_string(
+                str(self.checkpoint_db)
+            ) as checkpointer:
+                # Compile with checkpointer and interrupt before clarification
+                app = self.graph.compile(
+                    checkpointer=checkpointer,
+                    interrupt_before=["clarification"]
+                )
 
-            # Configuration for checkpointing
-            config = {"configurable": {"thread_id": thread_id}}
+                # Configuration for checkpointing
+                config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
-            # Invoke graph
-            final_state = await app.ainvoke(initial_state, config=config)
+                # Invoke graph
+                final_state = await app.ainvoke(initial_state, config=config)
+
+        except Exception as e:
+            # Log the error and return error response
+            import logging
+            logging.error(f"Error processing request in thread {thread_id}: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error": f"Failed to process request: {str(e)}",
+                "thread_id": thread_id
+            }
 
         # Check if paused for clarification
         if final_state.get("needs_clarification"):
@@ -223,33 +235,44 @@ class LangGraphVivekOrchestrator:
         Returns:
             Dict with status and response/questions (might pause again)
         """
-        async with AsyncSqliteSaver.from_conn_string(
-            str(self.checkpoint_db)
-        ) as checkpointer:
-            # Compile with checkpointer
-            app = self.graph.compile(
-                checkpointer=checkpointer,
-                interrupt_before=["clarification"]
-            )
+        try:
+            async with AsyncSqliteSaver.from_conn_string(
+                str(self.checkpoint_db)
+            ) as checkpointer:
+                # Compile with checkpointer
+                app = self.graph.compile(
+                    checkpointer=checkpointer,
+                    interrupt_before=["clarification"]
+                )
 
-            # Configuration
-            config = {"configurable": {"thread_id": thread_id}}
+                # Configuration
+                config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
-            # Get current state
-            state_snapshot = await app.aget_state(config)
-            current_state = state_snapshot.values
+                # Get current state
+                state_snapshot = await app.aget_state(config)
+                current_state = state_snapshot.values
 
-            # Update state with answers
-            current_state["clarification_answers"] = answers
-            current_state["needs_clarification"] = False
+                # Update state with answers
+                current_state["clarification_answers"] = answers
+                current_state["needs_clarification"] = False
 
-            # Add answers to context for planner/executor to use
-            if "context" not in current_state:
-                current_state["context"] = {}
-            current_state["context"]["user_clarifications"] = answers
+                # Add answers to context for planner/executor to use
+                if "context" not in current_state:
+                    current_state["context"] = {}
+                current_state["context"]["user_clarifications"] = answers
 
-            # Resume execution
-            final_state = await app.ainvoke(current_state, config=config)
+                # Resume execution
+                final_state = await app.ainvoke(current_state, config=config)
+
+        except Exception as e:
+            # Log the error and return error response
+            import logging
+            logging.error(f"Error resuming request in thread {thread_id}: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error": f"Failed to resume request: {str(e)}",
+                "thread_id": thread_id
+            }
 
         # Check if paused again
         if final_state.get("needs_clarification"):
@@ -279,27 +302,43 @@ class LangGraphVivekOrchestrator:
         Yields:
             Event dictionaries with progress information
         """
-        # Update context with current mode
-        self.context["current_mode"] = self.current_mode
+        try:
+            # Update context with current mode
+            self.context["current_mode"] = self.current_mode
 
-        # Initialize state
-        initial_state = initialize_state(user_input, self.context)
+            # Initialize state
+            initial_state = initialize_state(user_input, self.context)
 
-        # Use checkpointing with async context manager
-        async with AsyncSqliteSaver.from_conn_string(
-            str(self.checkpoint_db)
-        ) as checkpointer:
-            # Compile with checkpointer
-            app = self.graph.compile(checkpointer=checkpointer)
+            # Use checkpointing with async context manager
+            async with AsyncSqliteSaver.from_conn_string(
+                str(self.checkpoint_db)
+            ) as checkpointer:
+                # Compile with checkpointer
+                app = self.graph.compile(checkpointer=checkpointer)
 
-            # Configuration for checkpointing
-            config = {"configurable": {"thread_id": thread_id}}
+                # Configuration for checkpointing
+                config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
-            # Stream events
-            async for event in app.astream_events(
-                initial_state, config=config, version="v2"
-            ):
-                yield event
+                # Stream events
+                async for event in app.astream_events(
+                    initial_state, config=config, version="v2"
+                ):
+                    # Convert event to dict format for compatibility
+                    yield {
+                        "event": event["event"],
+                        "data": event["data"],
+                        "metadata": event.get("metadata", {})
+                    }
+
+        except Exception as e:
+            # Log the error and yield error event
+            import logging
+            logging.error(f"Error in streaming request for thread {thread_id}: {e}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {"error": str(e)},
+                "metadata": {"thread_id": thread_id}
+            }
 
     def switch_mode(self, mode: str) -> str:
         """
@@ -333,23 +372,3 @@ class LangGraphVivekOrchestrator:
 • Project: {self.project_root}
 • Working Files: {len(self.context.get('working_files', []))}
 • Checkpoint DB: {self.project_root / '.vivek' / 'checkpoints.db'}"""
-
-    async def get_session_history(self, thread_id: str = "default") -> list:
-        """
-        Get the history of a session from checkpoints.
-
-        Args:
-            thread_id: Thread ID to query
-
-        Returns:
-            List of state checkpoints
-        """
-        config = {"configurable": {"thread_id": thread_id}}
-        history = []
-
-        # Get checkpoint history
-        checkpoints = self.checkpointer.list(config)
-        for checkpoint in checkpoints:
-            history.append(checkpoint)
-
-        return history

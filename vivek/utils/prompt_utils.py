@@ -1,6 +1,6 @@
 """Prompt utilities for token management and optimization."""
 import re
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional, List
 
 try:
     import tiktoken
@@ -79,7 +79,6 @@ class TokenCounter:
     def get_context_window(cls, model_name: str) -> int:
         """Get context window size for a model."""
         # Extract base model name (remove size suffix if present)
-        base_name = model_name.split(":")[0] if ":" in model_name else model_name
         return cls.CONTEXT_WINDOWS.get(model_name, 4096)  # Default fallback
 
     @classmethod
@@ -114,10 +113,10 @@ class PromptCompressor:
             # Simple summarization by keeping important sections
             lines = context.split('\n')
             # Keep recent lines and any lines that look like summaries or decisions
-            important_lines = []
+            important_lines: List[str] = []
             for line in reversed(lines):
                 if any(keyword in line.lower() for keyword in
-                      ['decision:', 'summary:', 'key:', 'important:', 'conclusion:']):
+                        ['decision:', 'summary:', 'key:', 'important:', 'conclusion:']):
                     important_lines.insert(0, line)
                 elif len(important_lines) < max_tokens // 10:  # Keep some recent lines
                     important_lines.insert(0, line)
@@ -127,8 +126,8 @@ class PromptCompressor:
         else:  # selective
             # Keep code blocks and recent content
             lines = context.split('\n')
-            code_blocks = []
-            recent_lines = []
+            code_blocks: List[str] = []
+            recent_lines: List[str] = []
 
             in_code_block = False
             for i, line in enumerate(reversed(lines)):
@@ -211,8 +210,9 @@ class PromptValidator:
 
             if system_tokens > max_tokens:
                 raise ValueError(
-                    f"System prompt alone ({system_tokens} tokens) exceeds maximum allowed tokens ({max_tokens}). "
-                    "Consider using a smaller system prompt or larger context window."
+                    f"System prompt alone ({system_tokens} tokens) exceeds maximum allowed tokens "
+                    f"({max_tokens}). "
+                    f"Consider using a smaller system prompt or larger context window."
                 )
 
             allowed_for_context = max_tokens - system_tokens
@@ -227,8 +227,8 @@ class PromptValidator:
             final_combined_tokens = system_tokens + compressed_tokens
             if final_combined_tokens > max_tokens:
                 raise ValueError(
-                    f"Final combined prompt ({final_combined_tokens} tokens) still exceeds maximum allowed tokens ({max_tokens}). "
-                    "Context compression was insufficient."
+                    f"Final combined prompt ({final_combined_tokens} tokens) still exceeds maximum allowed tokens "
+                    f"({max_tokens}). Context compression was insufficient."
                 )
 
             return f"{system_prompt}\n{compressed_context}"

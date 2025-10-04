@@ -1,15 +1,5 @@
-"""Message protocol for orchestrator-centric communication.
-
-All nodes (Planner, Executor, Reviewer) communicate with the orchestrator
-using standardized message types. This ensures:
-- Single source of truth (orchestrator)
-- Consistent state management
-- Unified error handling
-- Flexible routing based on message type
-"""
-
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class MessageType(Enum):

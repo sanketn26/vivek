@@ -1,9 +1,8 @@
 from vivek.llm.models import LLMProvider
-from vivek.utils.prompt_utils import TokenCounter, PromptCompressor
+from vivek.utils.prompt_utils import PromptCompressor
 from vivek.core.message_protocol import (
     execution_complete,
     clarification_needed,
-    error_occurred,
 )
 
 import json
@@ -15,8 +14,8 @@ class PlannerModel:
         self.provider = provider
         # Compressed system prompt for token efficiency
         self.system_prompt = (
-            "Planning Brain: Analyze requests, break into steps, choose modes (peer|architect|sdet|coder), "
-            "review outputs. Respond in JSON format."
+            "Planning Brain: Analyze requests, break into steps, choose modes "
+            "(peer|architect|sdet|coder), review outputs. Respond in JSON format."
         )
 
     def analyze_request(self, user_input: str, context: str) -> Dict[str, Any]:
@@ -45,10 +44,13 @@ Choose primary mode:
 
 Break task into 1-5 work items with:
 - mode: peer|architect|sdet|coder
-- file_path: REAL existing path from context OR specific new path (use "console" for peer mode, don't invent paths)
+- file_path: REAL existing path from context OR specific new path (use "console" for peer mode,
+  don't invent paths)
 - file_status: "new" or "existing"
-- description: detailed, actionable prompt (e.g., "Implement function X with error handling", "Design component Y", "Test scenario Z")
-- dependencies: array of 1-based work item numbers that must complete first (e.g., [1, 2] means item depends on items 1 and 2)
+- description: detailed, actionable prompt (e.g., "Implement function X with error handling",
+  "Design component Y", "Test scenario Z")
+- dependencies: array of 1-based work item numbers that must complete first
+  (e.g., [1, 2] means item depends on items 1 and 2)
 
 IMPORTANT:
 - Use real file paths from context or logical new paths
@@ -110,10 +112,12 @@ Evaluate:
 Decision: If score >= 0.7 AND complete → needs_iteration=false, else true
 
 If requirements are UNCLEAR (task ambiguous, conflicting info), output:
-{{"requirements_unclear": true, "unclear_points": [{{"question": "...", "type": "confirmation", "context": "..."}}], "quality_score": 0.6}}
+{{"requirements_unclear": true, "unclear_points": [{{"question": "...", "type": "confirmation", "context": "..."}}],
+  "quality_score": 0.6}}
 
 Otherwise output (JSON only):
-{{"quality_score": 0.85, "needs_iteration": false, "feedback": "implementation complete with error handling", "suggestions": ["add logging", "consider edge case X"]}}"""
+{{"quality_score": 0.85, "needs_iteration": false, "feedback": "implementation complete with error handling",
+  "suggestions": ["add logging", "consider edge case X"]}}"""
 
         response = self.provider.generate(prompt, temperature=0.1)
         return self._parse_review(response)

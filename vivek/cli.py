@@ -8,7 +8,6 @@ from rich.markdown import Markdown
 from pathlib import Path
 from typing import Optional
 import yaml
-import os
 
 from .core.langgraph_orchestrator import LangGraphVivekOrchestrator
 
@@ -194,10 +193,17 @@ async def chat_loop(vivek: LangGraphVivekOrchestrator):
 
             # Show thinking indicator
             with console.status("[bold green]🤖 Vivek is thinking...", spinner="dots"):
-                response = await vivek.process_request(user_input)
+                result = await vivek.process_request(user_input)
 
-            # Display response with nice formatting
-            console.print(Panel(Markdown(response), title="🤖 Vivek", style="cyan"))
+            # Handle different response types
+            if result["status"] == "awaiting_clarification":
+                console.print(Panel(Markdown(result["clarification_output"]),
+                                   title="🤖 Vivek Needs Clarification", style="yellow"))
+            elif result["status"] == "complete":
+                console.print(Panel(Markdown(result["output"]), title="🤖 Vivek", style="cyan"))
+            else:
+                console.print(Panel(f"Error: {result.get('error', 'Unknown error')}",
+                                   title="❌ Error", style="red"))
 
         except KeyboardInterrupt:
             console.print("\n👋 Goodbye!", style="yellow")
