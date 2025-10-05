@@ -1,10 +1,11 @@
 """Peer executor."""
 
 from vivek.llm.executor import BaseExecutor
+from vivek.llm.constants import Mode
 
 
 class PeerExecutor(BaseExecutor):
-    mode = "peer"
+    mode = Mode.PEER.value
     mode_prompt = """# PEER MODE - Collaborative Problem Solving
 
 Engage in helpful discussion:

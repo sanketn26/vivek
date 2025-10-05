@@ -10,6 +10,7 @@ from vivek.llm.executor import BaseExecutor
 from vivek.llm.planner import PlannerModel
 from vivek.llm.provider import OllamaProvider, OpenAICompatibleProvider, LMStudioProvider, SarvamAIProvider
 from vivek.llm.models import LLMProvider
+from vivek.llm.constants import PromptSections
 
 
 class TestLLMProvider:
@@ -837,7 +838,7 @@ class TestExecutorModel:
         assert sample_task_plan["description"] in prompt
         # Mode is in the mode_prompt, not in the task itself
         assert context in prompt
-        assert "WORK ITEMS" in prompt  # Updated for new prompt format
+        assert PromptSections.WORK_ITEMS in prompt  # Updated for new prompt format
 
     def test_execute_task_different_modes(self, executor_model):
         """Test task execution in different modes."""

@@ -1,10 +1,11 @@
 """SDET executor."""
 
 from vivek.llm.executor import BaseExecutor
+from vivek.llm.constants import Mode
 
 
 class SDETExecutor(BaseExecutor):
-    mode = "sdet"
+    mode = Mode.SDET.value
     mode_prompt = """# SDET MODE - Systematic Testing Approach
 
 Create comprehensive test strategy:
