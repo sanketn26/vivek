@@ -1,4 +1,6 @@
 from typing import Any, Dict, Optional
+
+from typing import Any, Dict, Optional
 import importlib
 
 from vivek.llm.models import LLMProvider
@@ -11,7 +13,6 @@ from vivek.llm.constants import (
     TaskPlanKeys,
     OutputFormatMarkers,
     PromptSections,
-    MODE_MAPPING,
 )
 from vivek.utils.prompt_utils import PromptCompressor
 from vivek.core.message_protocol import (
@@ -211,11 +212,19 @@ Begin execution:"""
 def get_executor(mode: str, provider: LLMProvider) -> BaseExecutor:
     """Factory to return a mode-specific executor.
 
-    Tries to import vivek.llm.<mode>_executor and instantiate the expected class.
+    Uses lazy imports and direct class instantiation based on mode.
     Falls back to BaseExecutor when the specific executor is not available.
     """
-    class_name = MODE_MAPPING.get(mode, "CoderExecutor")
-    module_name = f"vivek.llm.{mode}_executor"
+    # Lazy import mapping to avoid circular dependencies
+    _LAZY_CLASS_MAPPING = {
+        Mode.CODER.value: ("vivek.llm.coder_executor", "CoderExecutor"),
+        Mode.ARCHITECT.value: ("vivek.llm.architect_executor", "ArchitectExecutor"),
+        Mode.PEER.value: ("vivek.llm.peer_executor", "PeerExecutor"),
+        Mode.SDET.value: ("vivek.llm.sdet_executor", "SDETExecutor"),
+    }
+
+    module_name, class_name = _LAZY_CLASS_MAPPING.get(mode, ("vivek.llm.coder_executor", "CoderExecutor"))
+
     try:
         mod = importlib.import_module(module_name)
         executor_cls = getattr(mod, class_name)

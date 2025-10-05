@@ -101,10 +101,3 @@ MODE_CODER = Mode.CODER.value
 MODE_ARCHITECT = Mode.ARCHITECT.value
 MODE_PEER = Mode.PEER.value
 MODE_SDET = Mode.SDET.value
-
-MODE_MAPPING = {
-    Mode.CODER.value: "CoderExecutor",
-    Mode.ARCHITECT.value: "ArchitectExecutor",
-    Mode.PEER.value: "PeerExecutor",
-    Mode.SDET.value: "SDETExecutor",
-}
