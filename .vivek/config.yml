@@ -25,11 +25,12 @@ project_settings:
   framework:
   - FastAPI
   - Next.js
-  language:
-  - Python
-  - TypeScript
   - React
-  - Go
+  language:
+  - python
+  - typescript
+  - react
+  - go
   package_manager:
   - pip
   - npm

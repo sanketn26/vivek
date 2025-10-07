@@ -1,7 +1,6 @@
 from typing import Any, Dict, Optional
-
-from typing import Any, Dict, Optional
 import importlib
+import logging
 
 from vivek.llm.models import LLMProvider
 from vivek.llm.constants import (
@@ -20,6 +19,8 @@ from vivek.core.message_protocol import (
     clarification_needed,
     error_occurred,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BaseExecutor:
@@ -209,21 +210,56 @@ Begin execution:"""
         }
 
 
-def get_executor(mode: str, provider: LLMProvider) -> BaseExecutor:
-    """Factory to return a mode-specific executor.
+def get_executor(mode: str, provider: LLMProvider, language: Optional[str] = None) -> BaseExecutor:
+    """Factory to return a mode and language-specific executor.
 
-    Uses lazy imports and direct class instantiation based on mode.
-    Falls back to BaseExecutor when the specific executor is not available.
+    Uses plugin system for dynamic language support with fallback to
+    legacy hardcoded mapping for backward compatibility.
+
+    Args:
+        mode: Execution mode (coder, architect, peer, sdet)
+        provider: LLM provider instance
+        language: Programming language (python, typescript, go, etc.)
+
+    Returns:
+        Appropriate executor instance
     """
-    # Lazy import mapping to avoid circular dependencies
-    _LAZY_CLASS_MAPPING = {
+    from ..utils.language_detector import LanguageDetector
+
+    # Auto-detect language if not provided
+    if language is None:
+        language = LanguageDetector.get_primary_language()
+
+    # Normalize language name
+    language = language.lower()
+
+    # Try plugin system first for dynamic language support
+    try:
+        # Import here to avoid circular imports at module level
+        from vivek.llm.plugins.base.registry import create_executor as create_plugin_executor
+
+        plugin_executor = create_plugin_executor(language, mode, provider)
+        if plugin_executor is not None:
+            return plugin_executor
+    except ImportError as e:
+        # Plugin system not available, continue to fallback
+        logger.debug(f"Plugin system not available: {e}")
+    except Exception as e:
+        # Plugin system failed, log error but continue to fallback
+        logger.warning(f"Plugin system error for {language}/{mode}: {e}")
+
+    # Plugin system is now the single source of truth for language-specific executors
+    # Legacy language-specific mapping removed - plugins handle this now
+
+    # Fall back to mode-only mapping (original behavior)
+    _MODE_EXECUTOR_MAPPING = {
         Mode.CODER.value: ("vivek.llm.coder_executor", "CoderExecutor"),
         Mode.ARCHITECT.value: ("vivek.llm.architect_executor", "ArchitectExecutor"),
         Mode.PEER.value: ("vivek.llm.peer_executor", "PeerExecutor"),
         Mode.SDET.value: ("vivek.llm.sdet_executor", "SDETExecutor"),
     }
 
-    module_name, class_name = _LAZY_CLASS_MAPPING.get(mode, ("vivek.llm.coder_executor", "CoderExecutor"))
+    module_name, class_name = _MODE_EXECUTOR_MAPPING.get(mode, ("vivek.llm.coder_executor", "CoderExecutor"))
 
     try:
         mod = importlib.import_module(module_name)

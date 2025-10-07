@@ -25,7 +25,7 @@ from .graph_nodes import (
     create_reviewer_node,
     format_response_node,
 )
-from ..llm.executor import get_executor
+from ..utils.language_detector import LanguageDetector
 
 
 class LangGraphVivekOrchestrator:
@@ -54,6 +54,9 @@ class LangGraphVivekOrchestrator:
         self.project_root = Path(project_root)
         self.project_root.mkdir(parents=True, exist_ok=True)
 
+        # Detect project language
+        self.project_language = LanguageDetector.get_primary_language(str(project_root))
+
         # Initialize models
         self.planner_provider = OllamaProvider(planner_model)
         self.executor_provider = OllamaProvider(executor_model)
@@ -62,8 +65,9 @@ class LangGraphVivekOrchestrator:
 
         # Set initial mode before creating executor
         self.current_mode = "peer"
-        # instantiate executor for the initial mode
-        self.executor = get_executor(self.current_mode, self.executor_provider)
+        # instantiate executor for the initial mode with detected language
+        from ..llm.executor import get_executor
+        self.executor = get_executor(self.current_mode, self.executor_provider, self.project_language)
 
         # Build graph
         self.graph = self._build_graph()
@@ -85,6 +89,7 @@ class LangGraphVivekOrchestrator:
         self.context: Dict[str, Any] = {
             "project_root": str(self.project_root),
             "current_mode": self.current_mode,
+            "project_language": self.project_language,
             "project_summary": "",
             "recent_decisions": [],
             "working_files": [],
@@ -354,9 +359,10 @@ class LangGraphVivekOrchestrator:
         if mode in valid_modes:
             self.current_mode = mode
             self.context["current_mode"] = mode
-            # update executor instance for the new mode
-            self.executor = get_executor(mode, self.executor_provider)
-            return f"Switched to {mode} mode"
+            # update executor instance for the new mode with project language
+            from ..llm.executor import get_executor
+            self.executor = get_executor(mode, self.executor_provider, self.project_language)
+            return f"Switched to {mode} mode ({self.project_language})"
         else:
             return f"Invalid mode. Valid modes: {', '.join(valid_modes)}"
 
@@ -369,6 +375,7 @@ class LangGraphVivekOrchestrator:
         """
         return f"""**Vivek LangGraph Status:**
 • Mode: {self.current_mode}
+• Language: {self.project_language}
 • Project: {self.project_root}
 • Working Files: {len(self.context.get('working_files', []))}
 • Checkpoint DB: {self.project_root / '.vivek' / 'checkpoints.db'}"""

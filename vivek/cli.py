@@ -10,6 +10,7 @@ from typing import Optional
 import yaml
 
 from .core.langgraph_orchestrator import LangGraphVivekOrchestrator
+from .utils.language_detector import LanguageDetector
 
 console = Console()
 
@@ -30,10 +31,13 @@ def cli():
 )
 def init(mode, local_model, executor_model):
     """Initialize Vivek in current project"""
+    # Auto-detect project languages
+    detected_languages = LanguageDetector.load_configured_languages(".")
+
     config = {
         "project_settings": {
-            "language": ["Python", "TypeScript", "React", "Go"],
-            "framework": ["FastAPI", "Next.js"],
+            "language": detected_languages,
+            "framework": ["FastAPI", "Next.js", "React"],
             "test_framework": ["pytest", "jest"],
             "package_manager": ["pip", "npm"],
         },

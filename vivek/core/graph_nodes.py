@@ -14,7 +14,6 @@ from .graph_state import (
     increment_iteration,
     get_iteration_count,
 )
-from ..llm.executor import BaseExecutor
 from ..utils.prompt_utils import TokenCounter
 
 
@@ -86,7 +85,7 @@ def create_planner_node(planner: PlannerModel):
     return planner_node
 
 
-def create_executor_node(executor: BaseExecutor):
+def create_executor_node(executor):
     """
     Factory function to create an executor node with the given executor model.
 

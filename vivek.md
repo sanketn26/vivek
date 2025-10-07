@@ -1,8 +1,8 @@
 # Vivek Configuration
 
 ## Project Settings
-- **Languages**: Python, TypeScript, React, Go
-- **Frameworks**: FastAPI, Next.js
+- **Languages**: python, typescript, react, go
+- **Frameworks**: FastAPI, Next.js, React
 - **Test Frameworks**: pytest, jest
 - **Package Managers**: pip, npm
 
