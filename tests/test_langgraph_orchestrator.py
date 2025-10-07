@@ -294,7 +294,7 @@ class TestLangGraphOrchestrator:
                 return_value=mock_planner,
             ):
                 with patch(
-                    "vivek.core.langgraph_orchestrator.get_executor",
+                    "vivek.llm.executor.get_executor",
                     return_value=mock_executor,
                 ):
                     orchestrator = LangGraphVivekOrchestrator(
@@ -368,7 +368,7 @@ class TestLangGraphOrchestrator:
                 return_value=mock_planner,
             ):
                 with patch(
-                    "vivek.core.langgraph_orchestrator.get_executor",
+                    "vivek.llm.executor.get_executor",
                     return_value=mock_executor,
                 ):
                     orchestrator = LangGraphVivekOrchestrator(

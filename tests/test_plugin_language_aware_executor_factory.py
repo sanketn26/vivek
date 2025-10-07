@@ -12,7 +12,6 @@ from unittest.mock import Mock, MagicMock
 
 # Import existing components
 from vivek.llm.executor import BaseExecutor, get_executor
-from vivek.llm.language_aware_executor import LanguageAwareExecutor
 from vivek.llm.models import LLMProvider
 from vivek.llm.constants import Mode
 
@@ -729,34 +728,32 @@ class TestBackwardCompatibility:
 
         assert isinstance(executor3, BaseExecutor)
 
-    def test_language_aware_executors_still_work(self):
-        """Test that existing language-aware executors work unchanged."""
+    def test_plugin_system_provides_language_aware_functionality(self):
+        """Test that the plugin system provides language-aware functionality."""
 
-        # Import existing language-aware executor
-        from vivek.llm.language_aware_executor import LanguageAwareExecutor
+        from vivek.llm.plugins.base.registry import ExecutorRegistry
+        from vivek.llm.plugins.languages.python import PythonLanguagePlugin
 
         # Create a mock provider
         provider = Mock(spec=LLMProvider)
 
-        # Create concrete implementation for testing
-        class TestLanguageExecutor(LanguageAwareExecutor):
-            language = "python"
+        # Register a Python plugin
+        registry = ExecutorRegistry()
+        python_plugin = PythonLanguagePlugin()
+        registry.register_plugin(python_plugin)
 
-            def get_language_specific_instructions(self) -> str:
-                return "Test instructions"
+        # Get plugins for Python
+        python_plugins = registry.get_plugins_for_language_mode("python", "coder")
+        assert len(python_plugins) == 1
+        assert python_plugins[0].name == "Python Language Assistant"
 
-            def get_language_conventions(self) -> Dict[str, str]:
-                return {"test": "convention"}
+        # Create executor via plugin system
+        executor = registry.create_executor("python", "coder", provider)
 
-            def _get_language_code_example(self) -> str:
-                return "test code"
-
-        executor = TestLanguageExecutor(provider, "python")
-
-        # Should work exactly as before
-        assert executor.language == "python"
-        assert executor.get_language_specific_instructions() == "Test instructions"
-        assert executor.get_language_conventions()["test"] == "convention"
+        # Should have language-aware functionality from plugin
+        assert executor is not None
+        assert hasattr(executor, 'language')
+        assert hasattr(executor, 'mode')
 
     def test_existing_mode_language_mapping_preserved(self):
         """Test that existing mode+language mapping logic is preserved."""
