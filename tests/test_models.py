@@ -160,7 +160,7 @@ class TestOpenAICompatibleProvider:
 
             # Check that the call was made with correct parameters
             call_args = mock_post.call_args
-            assert call_args[0][0] == "https://api.openai.com/chat/completions"
+            assert call_args[0][0] == "https://api.openai.com/v1/chat/completions"
 
             # Check headers
             headers = call_args[1]["headers"]
@@ -325,7 +325,7 @@ class TestLMStudioProvider:
 
             # Should call the same endpoint as OpenAI
             call_args = mock_post.call_args
-            assert call_args[0][0] == "http://localhost:1234/chat/completions"
+            assert call_args[0][0] == "http://localhost:1234/v1/chat/completions"
 
 
 class TestSarvamAIProvider:
@@ -366,7 +366,7 @@ class TestSarvamAIProvider:
 
             # Check that the call was made with correct parameters
             call_args = mock_post.call_args
-            assert call_args[0][0] == "https://api.sarvam.ai/chat/completions"
+            assert call_args[0][0] == "https://api.sarvam.ai/v1/chat/completions"
 
             # Check headers - should use api-key header, not Authorization
             headers = call_args[1]["headers"]

@@ -28,19 +28,92 @@ This test suite validates that Vivek correctly handles all supported languages (
    make test
    ```
 
-### Running Integration Tests
+3. **(Optional) Initialize config** for real LLM tests:
+   ```bash
+   cd ../../  # Go to project root
+   vivek init --local-model qwen2.5-coder:7b --executor-model qwen2.5-coder:7b
+   ```
 
-From the project root:
+   This creates `.vivek/config.yml` which the test runner will use if no `--model` is specified.
+
+### Running Tests
+
+#### Mock Mode (Default - Fast)
+
+Tests all scenarios using mocked LLM providers:
 
 ```bash
-./examples/001-integration-tests/run_integration_tests.sh
+./examples/001-integration-tests/run_tests.sh
+# or explicitly:
+./examples/001-integration-tests/run_tests.sh --mock
 ```
 
-Or from the examples directory:
+#### Real LLM Mode (Actual Model Testing)
 
+**Auto-detect local LLM** (Ollama or LM Studio):
 ```bash
-cd examples/001-integration-tests
-./run_integration_tests.sh
+./examples/001-integration-tests/run_tests.sh --real
+```
+
+**Ollama** (explicit):
+```bash
+./examples/001-integration-tests/run_tests.sh --real --provider ollama --model qwen2.5-coder:7b
+```
+
+**LM Studio**:
+```bash
+./examples/001-integration-tests/run_tests.sh --real --provider lmstudio --model qwen2.5-coder
+```
+
+**OpenAI**:
+```bash
+./examples/001-integration-tests/run_tests.sh --real --provider openai --model gpt-4o --api-key sk-...
+```
+
+**Anthropic**:
+```bash
+./examples/001-integration-tests/run_tests.sh --real --provider anthropic --model claude-3-5-sonnet-20241022 --api-key sk-ant-...
+```
+
+**SarvamAI**:
+```bash
+# Using command-line API key
+./examples/001-integration-tests/run_tests.sh --real --provider sarvam --api-key your-sarvam-key
+
+# Or using environment variable
+export SARVAM_API_KEY="your-sarvam-key"
+./examples/001-integration-tests/run_tests.sh --real --provider sarvam
+```
+
+**Custom Endpoint**:
+```bash
+./examples/001-integration-tests/run_tests.sh --real --provider custom --url http://your-endpoint:8000 --model your-model
+```
+
+### Configuration Priority
+
+The test runner uses this order to determine settings:
+
+1. **Command-line arguments** (highest priority)
+   - `--provider`, `--model`, `--url`, `--api-key`
+2. **Config file** (`.vivek/config.yml` in project root)
+   - Used if CLI args not provided
+   - Reads `executor_model` setting
+3. **Auto-detection** (lowest priority)
+   - Detects Ollama (port 11434) or LM Studio (port 1234)
+   - Queries available models from provider API
+
+**Example workflow**:
+```bash
+# One-time setup: create config
+cd /path/to/vivek
+vivek init --executor-model qwen2.5-coder:7b
+
+# Run tests using config
+./examples/001-integration-tests/run_tests.sh --real
+
+# Override config for specific test
+./examples/001-integration-tests/run_tests.sh --real --model deepseek-coder:6.7b
 ```
 
 ## Test Structure
@@ -48,7 +121,7 @@ cd examples/001-integration-tests
 ```
 001-integration-tests/
 ├── README.md                      # This file
-├── run_integration_tests.sh       # Main test runner
+├── run_tests.sh                   # Unified test runner (mock + real LLM)
 ├── test_results.log               # Generated test results
 ├── python-project/
 │   └── calculator.py              # Sample Python code
@@ -85,6 +158,8 @@ cd examples/001-integration-tests
 
 ## What Gets Tested
 
+### Mock Mode Tests
+
 Each test validates:
 
 ✅ **Plugin Discovery**: All language plugins are found and loaded
@@ -93,6 +168,17 @@ Each test validates:
 ✅ **Language Context**: Prompts contain appropriate language conventions
 ✅ **Token Counting**: Prompts are logged with token counts
 ✅ **No Errors**: No exceptions or failures during execution
+
+### Real LLM Mode Tests
+
+In addition to mock mode validations, real LLM tests also verify:
+
+✅ **LLM Connectivity**: Connection to local or cloud LLM provider
+✅ **Actual Generation**: Real text generation based on prompts
+✅ **Response Quality**: Generated responses contain expected elements
+✅ **Provider Compatibility**: Works with Ollama, LM Studio, OpenAI, Anthropic
+✅ **Language-Specific Output**: Generated code uses correct language conventions
+✅ **Mode Behavior**: Different modes produce appropriate responses (code vs design vs tests)
 
 ## Understanding Results
 
@@ -161,13 +247,32 @@ cd ../..
 source venv/bin/activate  # or ./venv/bin/activate on some systems
 ```
 
+### Real LLM Mode Fails with Connection Error
+
+**Solution**: Verify LLM server is running:
+
+**For Ollama**:
+```bash
+curl http://localhost:11434/api/tags
+# Should return list of models
+```
+
+**For LM Studio**:
+```bash
+curl http://localhost:1234/v1/models
+# Should return list of loaded models
+```
+
 ### Slow Test Execution
 
-**Expected**: Each test takes ~0.5-1 second. Total suite runs in ~10-15 seconds.
+**Expected Times**:
+- **Mock Mode**: 0.5-1 second per test (~10-15 seconds total)
+- **Real LLM Mode**: 5-30 seconds per test depending on model size and hardware
 
-If tests are slower, check:
-- System resources
-- Virtual environment activation
+If tests are slower than expected, check:
+- Model size (3B models faster than 7B models)
+- System resources (RAM, CPU)
+- GPU availability (for faster inference)
 - Python version (3.10+ recommended)
 
 ## Beta Release Criteria
