@@ -2,10 +2,11 @@
 
 > **Privacy-first collaborative AI brain design for intelligent coding assistance.**
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ollama](https://img.shields.io/badge/Powered%20by-Ollama-orange)](https://ollama.com)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-red.svg)](https://github.com/yourusername/Vivek)
+[![Status: Beta](https://img.shields.io/badge/Status-v0.2.0--beta-green.svg)](https://github.com/yourusername/Vivek)
+[![Tests: 123/123](https://img.shields.io/badge/Tests-123%2F123%20passing-brightgreen.svg)](https://github.com/yourusername/Vivek)
 
 Vivek is a revolutionary coding assistant built on **privacy-first collaborative AI brain design**. Two+ specialized local LLMs work together in intelligent collaboration to deliver superior code generation, thoughtful review, and contextual assistance—all while keeping your code completely private on your machine.
 
@@ -48,6 +49,13 @@ Traditional AI assistants use one model trying to handle everything. Vivek's **c
 - **`/architect`** - System design and architectural decisions
 - **`/sdet`** - Testing strategies and quality assurance
 - **`/coder`** - Direct implementation and code generation
+
+### 🌐 **Multi-Language Support** _(New in v0.2.0-beta)_
+- **Python** - PEP 8 compliant, type hints, pytest integration
+- **TypeScript** - Strict mode, interfaces, Jest testing
+- **Go** - Idiomatic patterns, goroutines, table-driven tests
+- **Auto-detection** - Automatically detects your project language
+- **Language-specific prompts** - Optimized instructions for each language
 
 ### ⚡ **Optimized for Small LLMs**
 - **Work item breakdown** - Tasks decomposed into file-level, atomic operations

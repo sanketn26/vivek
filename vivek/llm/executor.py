@@ -14,6 +14,7 @@ from vivek.llm.constants import (
     PromptSections,
 )
 from vivek.utils.prompt_utils import PromptCompressor
+from vivek.utils.token_counter import log_token_count
 from vivek.core.message_protocol import (
     execution_complete,
     clarification_needed,
@@ -140,6 +141,10 @@ class BaseExecutor:
 {output_format}
 
 Begin execution:"""
+
+        # Log token count for monitoring and optimization
+        log_token_count(prompt, context=f"Executor[{self.mode}] prompt", threshold=800)
+
         return prompt
 
     def execute_task(self, task_plan: Dict[str, Any], context: str) -> Dict[str, Any]:

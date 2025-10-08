@@ -143,7 +143,11 @@ class ExecutorRegistry:
                         continue
 
                     # Convert file path to module path
-                    relative_path = py_file.relative_to(Path(__file__).parent.parent.parent)
+                    # __file__ is .../vivek/llm/plugins/base/registry.py
+                    # We need to go up to the PROJECT ROOT (not package root)
+                    # parent x5 = project root containing vivek/ package
+                    project_root = Path(__file__).parent.parent.parent.parent.parent
+                    relative_path = py_file.relative_to(project_root)
                     module_path = str(relative_path.with_suffix("")).replace("/", ".")
 
                     try:
@@ -159,10 +163,8 @@ class ExecutorRegistry:
                                     obj != LanguagePlugin):
 
                                     try:
-                                        # Try to instantiate the plugin with the class name as language
-                                        # or look for a default language class attribute
-                                        language = getattr(obj, 'language', 'unknown')
-                                        plugin_instance = obj(language)
+                                        # Instantiate the plugin (no-arg constructor)
+                                        plugin_instance = obj()
                                         if self.register_plugin(plugin_instance):
                                             discovered_count += 1
                                             logger.info(f"Auto-discovered plugin: {obj.__name__}")

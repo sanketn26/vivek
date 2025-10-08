@@ -1,0 +1,12 @@
+{
+  "name": "calculator-example",
+  "version": "1.0.0",
+  "description": "Simple calculator for testing Vivek",
+  "main": "calculator.ts",
+  "scripts": {
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": ["calculator", "example"],
+  "author": "Vivek Test",
+  "license": "MIT"
+}

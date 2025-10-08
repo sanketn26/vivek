@@ -8,48 +8,18 @@ from vivek.llm.models import LLMProvider
 
 @dataclass
 class LanguageConventions:
-    """Data class containing language-specific conventions and best practices."""
+    """Data class containing essential language-specific information.
+
+    Simplified to only include fields that are actually used by the plugin system.
+    All language-specific conventions are now embedded directly in the
+    get_language_specific_instructions() method of each plugin.
+    """
 
     # Language identifier
     language: str
 
     # File extensions associated with this language
     extensions: list[str] = field(default_factory=list)
-
-    # Naming conventions
-    naming_conventions: Dict[str, str] = field(default_factory=dict)
-
-    # Import/dependency management
-    import_style: str = ""
-    dependency_management: str = ""
-
-    # Code style and formatting
-    code_style: str = ""
-    formatting_rules: Dict[str, str] = field(default_factory=dict)
-
-    # Error handling patterns
-    error_handling: str = ""
-    exception_types: list[str] = field(default_factory=list)
-
-    # Documentation standards
-    documentation_style: str = ""
-    comment_conventions: Dict[str, str] = field(default_factory=dict)
-
-    # Type system information
-    type_system: str = ""
-    type_annotations: str = ""
-
-    # Testing conventions
-    testing_frameworks: list[str] = field(default_factory=list)
-    testing_patterns: Dict[str, str] = field(default_factory=dict)
-
-    # Project structure conventions
-    project_structure: Dict[str, str] = field(default_factory=dict)
-    entry_points: list[str] = field(default_factory=list)
-
-    # Language-specific idioms and best practices
-    idioms: list[str] = field(default_factory=list)
-    best_practices: list[str] = field(default_factory=list)
 
 
 class LanguagePlugin(ABC):
@@ -140,19 +110,6 @@ class LanguagePlugin(ABC):
 
         Returns:
             String containing language-specific guidance and requirements
-        """
-        pass
-
-    @abstractmethod
-    def get_code_example(self, mode: str, context: Optional[str] = None) -> str:
-        """Get a language-specific code example for the given mode.
-
-        Args:
-            mode: Execution mode requiring an example
-            context: Optional context to customize the example
-
-        Returns:
-            String containing a relevant code example
         """
         pass
 
