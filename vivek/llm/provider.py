@@ -89,7 +89,7 @@ class OpenAICompatibleProvider(LLMProvider):
                 f'{self.base_url}/v1/chat/completions',
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=120  # Increased timeout for thinking models
             )
             response.raise_for_status()
 
@@ -160,7 +160,7 @@ class SarvamAIProvider(LLMProvider):
                 f'{self.base_url}/v1/chat/completions',
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=120  # Increased timeout for thinking models
             )
             response.raise_for_status()
 
@@ -174,3 +174,77 @@ class SarvamAIProvider(LLMProvider):
             return f"Error connecting to Sarvam AI API: {str(e)}"
         except Exception as e:
             return f"Error generating response: {str(e)}"
+
+
+def get_provider(
+    provider_type: str,
+    model_name: str,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    **kwargs
+) -> LLMProvider:
+    """
+    Factory function to create the appropriate provider based on type.
+
+    Args:
+        provider_type: Type of provider (ollama, lmstudio, openai, anthropic, sarvam)
+        model_name: Model name to use
+        base_url: API endpoint URL (for providers that need it)
+        api_key: API key (for cloud providers)
+        **kwargs: Additional provider-specific arguments
+
+    Returns:
+        Configured provider instance
+
+    Raises:
+        ValueError: If provider_type is unknown
+    """
+    provider_type = provider_type.lower()
+
+    if provider_type == "ollama":
+        return OllamaProvider(model_name)
+
+    elif provider_type == "lmstudio":
+        return LMStudioProvider(
+            model_name=model_name,
+            base_url=base_url or "http://localhost:1234"
+        )
+
+    elif provider_type == "openai":
+        return OpenAICompatibleProvider(
+            model_name=model_name,
+            base_url=base_url or "https://api.openai.com/v1",
+            api_key=api_key or os.getenv('OPENAI_API_KEY'),
+            **kwargs
+        )
+
+    elif provider_type == "anthropic":
+        return OpenAICompatibleProvider(
+            model_name=model_name,
+            base_url=base_url or "https://api.anthropic.com/v1",
+            api_key=api_key or os.getenv('ANTHROPIC_API_KEY'),
+            **kwargs
+        )
+
+    elif provider_type == "sarvam":
+        return SarvamAIProvider(
+            model_name=model_name or "sarvam-m",
+            api_key=api_key,
+            **kwargs
+        )
+
+    elif provider_type == "openai-compatible":
+        if not base_url:
+            raise ValueError("base_url required for openai-compatible provider")
+        return OpenAICompatibleProvider(
+            model_name=model_name,
+            base_url=base_url,
+            api_key=api_key,
+            **kwargs
+        )
+
+    else:
+        raise ValueError(
+            f"Unknown provider type: {provider_type}. "
+            f"Supported: ollama, lmstudio, openai, anthropic, sarvam, openai-compatible"
+        )

@@ -1,14 +1,14 @@
 # Vivek Configuration
 
 ## Project Settings
-- **Languages**: python, typescript, react, go
+- **Languages**: python
 - **Frameworks**: FastAPI, Next.js, React
 - **Test Frameworks**: pytest, jest
 - **Package Managers**: pip, npm
 
 ## LLM Configuration
 - **Mode**: hybrid
-- **Planner Model**: qwen2.5-coder-7b-instruct-mlx
+- **Planner Model**: qwen2.5-coder:7b
 - **Executor Model**: qwen2.5-coder-7b-instruct-mlx
 - **Fallback Enabled**: True
 - **Auto Switch**: True

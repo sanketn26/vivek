@@ -42,6 +42,8 @@ class LangGraphVivekOrchestrator:
         project_root: str = ".",
         planner_model: str = "qwen2.5-coder:7b",
         executor_model: str = "qwen2.5-coder:7b",
+        provider_type: str = "ollama",
+        provider_config: dict = None,
     ):
         """
         Initialize the LangGraph orchestrator.
@@ -50,6 +52,8 @@ class LangGraphVivekOrchestrator:
             project_root: Root directory of the project
             planner_model: Model name for planner
             executor_model: Model name for executor
+            provider_type: Provider type (ollama, lmstudio, openai, anthropic, sarvam)
+            provider_config: Additional provider configuration (base_url, api_key, etc.)
         """
         self.project_root = Path(project_root)
         self.project_root.mkdir(parents=True, exist_ok=True)
@@ -57,9 +61,21 @@ class LangGraphVivekOrchestrator:
         # Detect project language
         self.project_language = LanguageDetector.get_primary_language(str(project_root))
 
-        # Initialize models
-        self.planner_provider = OllamaProvider(planner_model)
-        self.executor_provider = OllamaProvider(executor_model)
+        # Initialize provider configuration
+        provider_config = provider_config or {}
+
+        # Initialize models using provider factory
+        from ..llm.provider import get_provider
+        self.planner_provider = get_provider(
+            provider_type=provider_type,
+            model_name=planner_model,
+            **provider_config
+        )
+        self.executor_provider = get_provider(
+            provider_type=provider_type,
+            model_name=executor_model,
+            **provider_config
+        )
 
         self.planner = PlannerModel(self.planner_provider)
 

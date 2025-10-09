@@ -11,11 +11,14 @@ ignored_paths:
 - dist/
 - build/
 llm_configuration:
-  auto_switch: true
+  provider: lmstudio
+  planner_model: qwen/qwen3-4b-thinking-2507
   executor_model: qwen2.5-coder-7b-instruct-mlx
+  provider_config:
+    base_url: http://localhost:1234
+  auto_switch: true
   fallback_enabled: true
   mode: hybrid
-  planner_model: qwen2.5-coder-7b-instruct-mlx
 preferences:
   auto_index: true
   default_mode: peer
@@ -28,9 +31,6 @@ project_settings:
   - React
   language:
   - python
-  - typescript
-  - react
-  - go
   package_manager:
   - pip
   - npm

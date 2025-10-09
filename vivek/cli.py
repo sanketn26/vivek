@@ -128,7 +128,10 @@ def init(mode, local_model, executor_model):
 @cli.command()
 @click.option("--planner-model", help="Override planner model")
 @click.option("--executor-model", help="Override executor model")
-def chat(planner_model, executor_model):
+@click.option("--test-mode", is_flag=True, help="Run in test mode with detailed logging")
+@click.option("--test-input", help="Test input (for non-interactive testing)")
+@click.option("--log-file", help="Log file path for test mode")
+def chat(planner_model, executor_model, test_mode, test_input, log_file):
     """Start interactive chat session"""
 
     # Load config
@@ -146,11 +149,32 @@ def chat(planner_model, executor_model):
     planner = planner_model or config["llm_configuration"]["planner_model"]
     executor = executor_model or config["llm_configuration"]["executor_model"]
 
+    # Detect provider type and configuration
+    provider_type = "ollama"  # Default
+    provider_config = {}
+
+    # Auto-detect based on model name or explicit config
+    if "mlx" in executor.lower() or "mlx" in planner.lower():
+        # MLX models typically run via LM Studio
+        provider_type = "lmstudio"
+        provider_config = {"base_url": "http://localhost:1234"}
+    elif config.get("llm_configuration", {}).get("provider"):
+        # Explicit provider in config
+        provider_type = config["llm_configuration"]["provider"]
+        if "provider_config" in config["llm_configuration"]:
+            provider_config = config["llm_configuration"]["provider_config"]
+
+    # Discover language plugins before initializing orchestrator
+    from vivek.llm.plugins.base.registry import discover_plugins
+    plugin_count = discover_plugins()
+
     console.print(
         Panel(
             f"🤖 **Vivek Dual-Brain AI Assistant** (LangGraph Powered)\n\n"
             f"🧠 Planner: {planner}\n"
             f"⚙️ Executor: {executor}\n"
+            f"🔌 Provider: {provider_type}\n"
+            f"🔧 Plugins: {plugin_count} language plugins loaded\n"
             f"📁 Project: {Path.cwd().name}\n"
             f"🔄 Engine: LangGraph with auto-iteration\n"
             f"💾 Sessions: Persistent with SqliteSaver\n\n"
@@ -167,12 +191,85 @@ def chat(planner_model, executor_model):
         )
     )
 
-    # Initialize LangGraph orchestrator
+    # Initialize LangGraph orchestrator with provider
     vivek = LangGraphVivekOrchestrator(
-        project_root=str(Path.cwd()), planner_model=planner, executor_model=executor
+        project_root=str(Path.cwd()),
+        planner_model=planner,
+        executor_model=executor,
+        provider_type=provider_type,
+        provider_config=provider_config
     )
 
-    asyncio.run(chat_loop(vivek))
+    # Test mode or interactive mode
+    if test_mode:
+        if not test_input:
+            console.print("❌ --test-input required in test mode", style="red")
+            return
+        asyncio.run(run_test_mode(vivek, test_input, log_file))
+    else:
+        asyncio.run(chat_loop(vivek))
+
+
+async def run_test_mode(vivek: LangGraphVivekOrchestrator, test_input: str, log_file: Optional[str]):
+    """Run orchestrator in test mode with detailed logging."""
+    import json
+    from datetime import datetime
+
+    # Wrap providers with logging if log_file specified
+    if log_file:
+        from vivek.utils.test_logging import LoggingProviderWrapper, OrchestrationLogger
+
+        logger = OrchestrationLogger(log_file)
+        logger.log("TEST MODE", f"Input: {test_input}")
+
+        # Wrap providers
+        vivek.planner.provider = LoggingProviderWrapper(vivek.planner.provider, logger, "PLANNER")
+        vivek.executor.provider = LoggingProviderWrapper(vivek.executor.provider, logger, "EXECUTOR")
+
+    console.print(Panel(
+        f"🧪 **Test Mode**\n\n"
+        f"Input: {test_input}\n"
+        f"Log: {log_file or 'Console only'}",
+        title="🤖 Vivek Test Mode",
+        style="yellow"
+    ))
+
+    # Run orchestration
+    start_time = datetime.now()
+
+    with console.status("[bold green]🤖 Processing...", spinner="dots"):
+        result = await vivek.process_request(test_input)
+
+    elapsed = (datetime.now() - start_time).total_seconds()
+
+    # Display results
+    console.print(f"\n⏱️  Time: {elapsed:.2f}s")
+    console.print(f"📊 Quality: {result.get('quality_score', 0):.2f}")
+    console.print(f"🔄 Iterations: {result.get('iteration_count', 0)}")
+
+    if result["status"] == "complete":
+        console.print(Panel(
+            Markdown(result["output"]),
+            title="✅ Output",
+            style="green"
+        ))
+    else:
+        console.print(Panel(
+            result.get("clarification_output", "Unknown status"),
+            title="⚠️  Status",
+            style="yellow"
+        ))
+
+    # Save full result if log file specified
+    if log_file:
+        logger.log("FINAL RESULT", json.dumps(result, indent=2))
+        logger.log("METRICS", json.dumps({
+            "time_seconds": elapsed,
+            "quality_score": result.get('quality_score', 0),
+            "iteration_count": result.get('iteration_count', 0),
+            "status": result["status"]
+        }, indent=2))
+        console.print(f"\n📝 Full log saved to: {log_file}")
 
 
 async def chat_loop(vivek: LangGraphVivekOrchestrator):
