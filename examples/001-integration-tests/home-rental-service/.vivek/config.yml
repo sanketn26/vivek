@@ -1,0 +1,60 @@
+# Vivek Configuration for Home Rental Service
+
+project_settings:
+  name: "Home Rental Service"
+  language:
+    - "go"
+    - "typescript"
+    - "python"
+  framework:
+    - "React"
+    - "Vite"
+  test_framework:
+    - "jest"
+    - "pytest"
+    - "go test"
+  package_manager:
+    - "npm"
+    - "pip"
+    - "go mod"
+
+# ============================================================================
+# LLM Configuration - LM Studio (Local, Privacy-First) - ACTIVE
+# ============================================================================
+# Start LM Studio and load these models before running tests
+# Note: Base URL should NOT include /v1 - it's added automatically
+llm_configuration:
+  mode: "peer"
+  planner_model: "qwen/qwen3-4b-thinking-2507"
+  executor_model: "qwen2.5-coder-7b-instruct-mlx"
+  provider: "lmstudio"
+  provider_config:
+    base_url: "http://localhost:1234"
+    context_window: 9182
+  fallback_enabled: true
+  auto_switch: true
+
+# ============================================================================
+# Sarvam AI Alternative (Cloud-Based) - COMMENTED OUT
+# ============================================================================
+# To use Sarvam instead of LM Studio:
+# 1. Comment out the llm_configuration section above
+# 2. Uncomment the section below
+# 3. Set SARVAM_API_KEY environment variable: export SARVAM_API_KEY="your-key"
+#
+# llm_configuration:
+#   mode: "peer"
+#   planner_model: "sarvam-2b-v0.5"
+#   executor_model: "sarvam-2b-v0.5"
+#   provider: "sarvam"
+#   provider_config:
+#     api_key: "${SARVAM_API_KEY}"
+#     context_window: 9182
+#   fallback_enabled: true
+#   auto_switch: true
+
+preferences:
+  default_mode: "peer"
+  search_enabled: false
+  auto_index: false
+  context_window: 9182

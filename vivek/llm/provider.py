@@ -100,15 +100,27 @@ class OpenAICompatibleProvider(LLMProvider):
             response.raise_for_status()
 
             result = response.json()
+            print(f"DEBUG PROVIDER: Got response from API")
+            print(f"DEBUG PROVIDER: Response keys: {result.keys()}")
+
             if "choices" in result and len(result["choices"]) > 0:
-                return result["choices"][0]["message"]["content"]
+                content = result["choices"][0]["message"]["content"]
+                print(f"DEBUG PROVIDER: Content length: {len(content) if content else 0}")
+                print(f"DEBUG PROVIDER: Content preview: {content[:100] if content else 'EMPTY'}")
+                return content
             else:
-                return f"Error: Unexpected response format: {result}"
+                error_msg = f"Error: Unexpected response format: {result}"
+                print(f"DEBUG PROVIDER: {error_msg}")
+                return error_msg
 
         except requests.exceptions.RequestException as e:
-            return f"Error connecting to API: {str(e)}"
+            error_msg = f"Error connecting to API: {str(e)}"
+            print(f"DEBUG PROVIDER: {error_msg}")
+            return error_msg
         except Exception as e:
-            return f"Error generating response: {str(e)}"
+            error_msg = f"Error generating response: {str(e)}"
+            print(f"DEBUG PROVIDER: {error_msg}")
+            return error_msg
 
 
 class LMStudioProvider(OpenAICompatibleProvider):

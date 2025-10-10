@@ -34,54 +34,27 @@ class PlannerModel:
             context, max_context_tokens, strategy="summary"
         )
 
-        prompt = f"""Task planning assistant: Analyze request and create work items.
+        prompt = f"""You are a task planner. Your response MUST be ONLY valid JSON, nothing else.
 
 Request: {user_input}
 Context: {compressed_context}
 
-Choose primary mode:
-- peer: discussions, explanations, brainstorming
-- architect: design patterns, system structure
-- sdet: testing strategies, quality assurance
-- coder: writing or modifying code
+Modes: peer (discussion), architect (design), sdet (testing), coder (code)
 
-Break task into 1-5 work items with:
-- mode: peer|architect|sdet|coder
-- file_path: REAL existing path from context OR specific new path (use "console" for peer mode,
-  don't invent paths)
+If unclear, output THIS EXACT JSON structure:
+{{"needs_clarification": true, "questions": [{{"question": "your question", "type": "choice", "options": ["option1", "option2"]}}], "partial_plan": {{"description": "summary", "mode": "coder"}}}}
+
+Otherwise, output THIS EXACT JSON structure (replace placeholders with actual values):
+{{"description": "task summary", "mode": "coder", "work_items": [{{"mode": "coder", "file_path": "path/to/file.ext", "file_status": "new", "description": "detailed task", "dependencies": []}}], "priority": "normal"}}
+
+Rules:
+- MUST output valid JSON only
+- NO explanations, NO markdown, NO text before or after JSON
+- Use 1-5 work items
 - file_status: "new" or "existing"
-- description: detailed, actionable prompt (e.g., "Implement function X with error handling",
-  "Design component Y", "Test scenario Z")
-- dependencies: array of 1-based work item numbers that must complete first
-  (e.g., [1, 2] means item depends on items 1 and 2)
+- dependencies: array of integers (1-based indices)
 
-IMPORTANT:
-- Use real file paths from context or logical new paths
-- Dependencies are 1-based indices (first item is 1, not 0)
-- Create appropriate number of items: simple tasks=1-2, complex=3-5
-
-If requirements are unclear or ambiguous, output:
-{{
-  "needs_clarification": true,
-  "questions": [{{"question": "...", "type": "choice", "options": [...]}}],
-  "partial_plan": {{"description": "...", "mode": "..."}}
-}}
-
-Otherwise output (JSON only):
-{{
-  "description": "implement user authentication",
-  "mode": "coder",
-  "work_items": [
-    {{
-      "mode": "coder",
-      "file_path": "src/auth.py",
-      "file_status": "new",
-      "description": "implement login with JWT tokens and error handling",
-      "dependencies": []
-    }}
-  ],
-  "priority": "normal"
-}}"""
+Output ONLY the JSON now:"""
 
         response = self.provider.generate(prompt, temperature=0.1)
         return self._parse_task_plan(response)
@@ -101,26 +74,26 @@ Otherwise output (JSON only):
             executor_output, max_output_tokens, strategy="recent"
         )
 
-        prompt = f"""Code reviewer: Evaluate output against task requirements.
+        prompt = f"""You are a code reviewer. Your response MUST be ONLY valid JSON, nothing else.
 
 TASK: {task_description}
-
 OUTPUT: {compressed_output}
 
-Evaluate:
-- Completeness: All requirements addressed?
-- Quality: Correct syntax, logic, error handling, documentation?
-- Issues: Missing functionality, bugs, errors?
+Evaluate: completeness, quality, correctness. Score 0.0-1.0.
 
-Decision: If score >= 0.7 AND complete → needs_iteration=false, else true
+If requirements unclear, output THIS EXACT JSON:
+{{"requirements_unclear": true, "unclear_points": [{{"question": "clarifying question", "type": "confirmation", "context": "context"}}], "quality_score": 0.6}}
 
-If requirements are UNCLEAR (task ambiguous, conflicting info), output:
-{{"requirements_unclear": true, "unclear_points": [{{"question": "...", "type": "confirmation", "context": "..."}}],
-  "quality_score": 0.6}}
+Otherwise output THIS EXACT JSON (replace values):
+{{"quality_score": 0.85, "needs_iteration": false, "feedback": "brief summary", "suggestions": ["suggestion 1", "suggestion 2"]}}
 
-Otherwise output (JSON only):
-{{"quality_score": 0.85, "needs_iteration": false, "feedback": "implementation complete with error handling",
-  "suggestions": ["add logging", "consider edge case X"]}}"""
+Rules:
+- MUST output valid JSON only
+- NO explanations, NO markdown, NO text
+- quality_score: 0.0 to 1.0
+- needs_iteration: true if score < 0.7 or incomplete
+
+Output ONLY the JSON now:"""
 
         response = self.provider.generate(prompt, temperature=0.1)
         return self._parse_review(response)
@@ -128,20 +101,50 @@ Otherwise output (JSON only):
     def _parse_task_plan(self, response: str) -> Dict[str, Any]:
         """Parse LLM response and return structured message to orchestrator."""
         try:
+            # Debug: Print response info
+            print(f"DEBUG: Response type: {type(response)}")
+            print(f"DEBUG: Response length: {len(response) if response else 0}")
+            print(f"DEBUG: Response preview: {response[:200] if response else 'EMPTY'}")
+
+            # Check if response is empty
+            if not response or not response.strip():
+                print("ERROR: Received empty response from LLM")
+                raise ValueError("Empty response from LLM")
+
+            # Strip <think> tags if present (for thinking models like qwen3-4b-thinking)
+            if "<think>" in response:
+                # Find the end of the thinking section
+                think_end = response.find("</think>")
+                if think_end != -1:
+                    # Get content after </think>
+                    response = response[think_end + len("</think>"):].strip()
+                    print(f"DEBUG: Stripped <think> tags, remaining length: {len(response)}")
+                    print(f"DEBUG: Content after think: {response[:200]}")
+
             # First, try to parse the entire response as JSON (for test mocks)
             try:
                 data = json.loads(response.strip())
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e1:
+                print(f"DEBUG: Direct JSON parse failed: {e1}")
                 # If that fails, extract JSON from response (for real LLM responses)
                 start = response.find("{")
                 end = response.rfind("}") + 1
 
                 if start == -1 or end == 0:
                     # No JSON found - return fallback
+                    print(f"ERROR: No JSON found in response")
+                    print(f"Full response: {response}")
                     raise ValueError("No JSON found in response")
 
                 json_str = response[start:end]
-                data = json.loads(json_str)
+                print(f"DEBUG: Extracted JSON string length: {len(json_str)}")
+                print(f"DEBUG: Extracted JSON (first 500 chars): {json_str[:500]}")
+                try:
+                    data = json.loads(json_str)
+                except json.JSONDecodeError as e2:
+                    print(f"ERROR: Failed to parse extracted JSON: {e2}")
+                    print(f"Problematic JSON: {json_str}")
+                    raise
 
             # Check if clarification needed
             if data.get("needs_clarification"):
@@ -210,6 +213,26 @@ Otherwise output (JSON only):
         """Parse review response and return structured message to orchestrator."""
         error_msg = None
         try:
+            # Debug: Print response info
+            print(f"DEBUG REVIEW: Response type: {type(response)}")
+            print(f"DEBUG REVIEW: Response length: {len(response) if response else 0}")
+            print(f"DEBUG REVIEW: Response preview: {response[:200] if response else 'EMPTY'}")
+
+            # Check if response is empty
+            if not response or not response.strip():
+                print("ERROR: Received empty response from LLM in review")
+                raise ValueError("Empty response from LLM")
+
+            # Strip <think> tags if present (for thinking models like qwen3-4b-thinking)
+            if "<think>" in response:
+                # Find the end of the thinking section
+                think_end = response.find("</think>")
+                if think_end != -1:
+                    # Get content after </think>
+                    response = response[think_end + len("</think>"):].strip()
+                    print(f"DEBUG REVIEW: Stripped <think> tags, remaining length: {len(response)}")
+                    print(f"DEBUG REVIEW: Content after think: {response[:200]}")
+
             # First, try to parse the entire response as JSON (for test mocks)
             try:
                 data = json.loads(response.strip())
@@ -220,6 +243,7 @@ Otherwise output (JSON only):
 
                 if start == -1 or end == 0:
                     # No JSON found
+                    print(f"ERROR: No JSON found in review response: {response[:500]}")
                     raise ValueError("No JSON found in response")
 
                 json_str = response[start:end]
