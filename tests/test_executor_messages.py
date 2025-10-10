@@ -34,13 +34,15 @@ class TestExecutorMessages:
                     "file_path": "src/auth.py",
                     "file_status": "new",
                     "description": "implement JWT authentication",
-                    "dependencies": []
+                    "dependencies": [],
                 }
             ],
-            "priority": "normal"
+            "priority": "normal",
         }
 
-    def test_executor_returns_execution_complete_message(self, executor, mock_provider, sample_task_plan):
+    def test_executor_returns_execution_complete_message(
+        self, executor, mock_provider, sample_task_plan
+    ):
         """Test executor returns execution_complete message on success."""
         # Mock successful execution
         mock_provider.generate.return_value = """
@@ -72,7 +74,9 @@ def generate_token(user_id):
         assert "src/auth.py" in result["payload"]["output"]
 
     @pytest.mark.skip(reason="Phase 2: Requires internal ambiguity detection workflow")
-    def test_executor_returns_clarification_needed_message(self, executor, mock_provider, sample_task_plan):
+    def test_executor_returns_clarification_needed_message(
+        self, executor, mock_provider, sample_task_plan
+    ):
         """Test executor returns clarification_needed when ambiguous."""
         # Mock executor finding ambiguity
         mock_provider.generate.return_value = """
@@ -92,7 +96,9 @@ CLARIFICATION NEEDED:
         assert "questions" in result["payload"]
         assert len(result["payload"]["questions"]) >= 1
 
-    def test_executor_returns_error_message_on_exception(self, executor, mock_provider, sample_task_plan):
+    def test_executor_returns_error_message_on_exception(
+        self, executor, mock_provider, sample_task_plan
+    ):
         """Test executor returns error message on exception."""
         # Mock provider raising exception
         mock_provider.generate.side_effect = Exception("Network error")
@@ -105,7 +111,9 @@ CLARIFICATION NEEDED:
         assert "error" in result["payload"]
         assert "Network error" in result["payload"]["error"]
 
-    def test_executor_includes_metadata_in_messages(self, executor, mock_provider, sample_task_plan):
+    def test_executor_includes_metadata_in_messages(
+        self, executor, mock_provider, sample_task_plan
+    ):
         """Test executor includes useful metadata."""
         mock_provider.generate.return_value = """
 ### Work Item 1: src/auth.py
@@ -124,9 +132,12 @@ def login(): pass
         assert "metadata" in result
         # Should include work items completed, files modified, etc.
 
-    def test_coder_executor_returns_structured_message(self, mock_provider, sample_task_plan):
+    def test_coder_executor_returns_structured_message(
+        self, mock_provider, sample_task_plan
+    ):
         """Test CoderExecutor returns structured messages."""
         from vivek.llm.coder_executor import CoderExecutor
+
         executor = CoderExecutor(mock_provider)
 
         mock_provider.generate.return_value = """
@@ -142,7 +153,9 @@ def authenticate(): return True
         assert result["type"] == MessageType.EXECUTION_COMPLETE.value
         assert result["from_node"] == "executor_coder"
 
-    def test_executor_factory_creates_executors_returning_messages(self, mock_provider, sample_task_plan):
+    def test_executor_factory_creates_executors_returning_messages(
+        self, mock_provider, sample_task_plan
+    ):
         """Test get_executor creates executors that return messages."""
         modes = ["peer", "architect", "sdet", "coder"]
 
@@ -164,13 +177,15 @@ def authenticate(): return True
         ambiguous_task = {
             "description": "modify auth",
             "mode": "coder",
-            "work_items": [{
-                "mode": "coder",
-                "file_path": "auth.py",  # No path specified
-                "file_status": "existing",
-                "description": "add logging",
-                "dependencies": []
-            }]
+            "work_items": [
+                {
+                    "mode": "coder",
+                    "file_path": "auth.py",  # No path specified
+                    "file_status": "existing",
+                    "description": "add logging",
+                    "dependencies": [],
+                }
+            ],
         }
 
         # Context has multiple auth.py files

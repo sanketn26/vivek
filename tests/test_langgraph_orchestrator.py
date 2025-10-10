@@ -54,7 +54,7 @@ def mock_planner():
             "relevant_files": ["test.py"],
             "priority": "normal",
         },
-        from_node="planner"
+        from_node="planner",
     )
     planner.review_output.return_value = execution_complete(
         output={
@@ -63,7 +63,7 @@ def mock_planner():
             "feedback": "Looks good",
             "suggestions": ["Add error handling"],
         },
-        from_node="reviewer"
+        from_node="reviewer",
     )
     return planner
 
@@ -74,8 +74,7 @@ def mock_executor():
     executor = Mock()
     # Return message protocol format
     executor.execute_task.return_value = execution_complete(
-        output="Generated code output",
-        from_node="executor_coder"
+        output="Generated code output", from_node="executor_coder"
     )
     return executor
 
@@ -349,7 +348,7 @@ class TestLangGraphOrchestrator:
                     "feedback": "Needs improvement",
                     "suggestions": [],
                 },
-                from_node="reviewer"
+                from_node="reviewer",
             ),
             execution_complete(
                 output={
@@ -358,7 +357,7 @@ class TestLangGraphOrchestrator:
                     "feedback": "Much better",
                     "suggestions": [],
                 },
-                from_node="reviewer"
+                from_node="reviewer",
             ),
         ]
 

@@ -13,7 +13,13 @@ class LanguageDetector:
     LANGUAGE_PATTERNS = {
         "python": {
             "extensions": [".py", ".pyx", ".pyw"],
-            "files": ["requirements.txt", "setup.py", "pyproject.toml", "Pipfile", "poetry.lock"],
+            "files": [
+                "requirements.txt",
+                "setup.py",
+                "pyproject.toml",
+                "Pipfile",
+                "poetry.lock",
+            ],
             "dirs": ["__pycache__", "venv", ".venv", "env", ".env"],
         },
         "typescript": {
@@ -73,15 +79,21 @@ class LanguageDetector:
             # Check files
             for file_pattern in patterns["files"]:
                 if (root_path / file_pattern).exists():
-                    language_counts[lang] = language_counts.get(lang, 0) + 10  # Weight file presence higher
+                    language_counts[lang] = (
+                        language_counts.get(lang, 0) + 10
+                    )  # Weight file presence higher
 
             # Check directories
             for dir_pattern in patterns["dirs"]:
                 if (root_path / dir_pattern).exists():
-                    language_counts[lang] = language_counts.get(lang, 0) + 5  # Weight dir presence
+                    language_counts[lang] = (
+                        language_counts.get(lang, 0) + 5
+                    )  # Weight dir presence
 
         # Sort by count (descending) and return language names
-        sorted_languages = sorted(language_counts.items(), key=lambda x: x[1], reverse=True)
+        sorted_languages = sorted(
+            language_counts.items(), key=lambda x: x[1], reverse=True
+        )
         return [lang for lang, count in sorted_languages if count > 0]
 
     @classmethod

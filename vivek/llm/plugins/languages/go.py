@@ -33,7 +33,12 @@ class GoLanguagePlugin(LanguagePlugin):
     @property
     def supported_modes(self) -> list[str]:
         """List of execution modes this plugin supports."""
-        return [Mode.CODER.value, Mode.ARCHITECT.value, Mode.PEER.value, Mode.SDET.value]
+        return [
+            Mode.CODER.value,
+            Mode.ARCHITECT.value,
+            Mode.PEER.value,
+            Mode.SDET.value,
+        ]
 
     @property
     def name(self) -> str:
@@ -70,12 +75,14 @@ class GoLanguagePlugin(LanguagePlugin):
                 self.mode = mode_lower
 
                 # Set language-specific prompt
-                if hasattr(base_executor, 'mode_prompt'):
+                if hasattr(base_executor, "mode_prompt"):
                     base_executor.mode_prompt = f"Go {mode_lower.title()} Mode: {self._get_mode_specific_prompt(mode_lower)}"
 
             def _get_mode_specific_prompt(self, mode: str) -> str:
                 """Get Go-specific prompt for the mode."""
-                mode_instructions = self.language_plugin.get_language_specific_instructions(mode)
+                mode_instructions = (
+                    self.language_plugin.get_language_specific_instructions(mode)
+                )
                 return f"Follow Go best practices. {mode_instructions}"
 
             def __getattr__(self, name):
@@ -113,37 +120,48 @@ Follow Go conventions:
         mode_lower = mode.lower()
 
         if mode_lower == Mode.CODER.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Coding Requirements:**
 - Use explicit error handling with error returns
 - Implement interfaces for better testability
 - Use struct composition and embedding appropriately
 - Write comprehensive tests for all public functions
 - Follow the standard Go project layout"""
+            )
         elif mode_lower == Mode.ARCHITECT.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Architecture Requirements:**
 - Design concurrent programs using goroutines and channels
 - Plan for scalability with proper package organization
 - Consider context.Context for cancellation and timeouts
 - Document public APIs and design patterns
 - Consider deployment and containerization strategies"""
+            )
         elif mode_lower == Mode.PEER.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Code Review Requirements:**
 - Check for proper error handling and no ignored errors
 - Verify idiomatic Go code patterns and conventions
 - Ensure comprehensive test coverage
 - Review for security vulnerabilities and race conditions
 - Check for appropriate use of interfaces and abstractions"""
+            )
         elif mode_lower == Mode.SDET.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Testing Requirements:**
 - Write comprehensive unit tests using the testing package
 - Include benchmark tests for performance-critical code
 - Test error conditions and edge cases thoroughly
 - Use table-driven tests for multiple scenarios
 - Aim for >80% test coverage"""
+            )
         else:
             return base_instructions
-

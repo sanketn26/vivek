@@ -9,7 +9,7 @@ This replaces the manual orchestration with a graph-based approach providing:
 """
 
 from pathlib import Path
-from typing import Dict, Any, AsyncIterator
+from typing import Dict, Any, AsyncIterator, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langchain_core.runnables import RunnableConfig
@@ -19,11 +19,11 @@ from ..llm.planner import PlannerModel
 from ..llm.provider import OllamaProvider
 
 from .graph_state import VivekState, initialize_state, should_iterate
-from .graph_nodes import (
-    create_planner_node,
-    create_executor_node,
-    create_reviewer_node,
-    format_response_node,
+from .enhanced_graph_nodes import (
+    create_enhanced_planner_node,
+    create_enhanced_executor_node,
+    create_enhanced_reviewer_node,
+    create_enhanced_format_response_node,
 )
 from ..utils.language_detector import LanguageDetector
 
@@ -43,7 +43,7 @@ class LangGraphVivekOrchestrator:
         planner_model: str = "qwen2.5-coder:7b",
         executor_model: str = "qwen2.5-coder:7b",
         provider_type: str = "ollama",
-        provider_config: dict = None,
+        provider_config: Optional[dict] = None,
     ):
         """
         Initialize the LangGraph orchestrator.
@@ -66,15 +66,12 @@ class LangGraphVivekOrchestrator:
 
         # Initialize models using provider factory
         from ..llm.provider import get_provider
+
         self.planner_provider = get_provider(
-            provider_type=provider_type,
-            model_name=planner_model,
-            **provider_config
+            provider_type=provider_type, model_name=planner_model, **provider_config
         )
         self.executor_provider = get_provider(
-            provider_type=provider_type,
-            model_name=executor_model,
-            **provider_config
+            provider_type=provider_type, model_name=executor_model, **provider_config
         )
 
         self.planner = PlannerModel(self.planner_provider)
@@ -83,7 +80,10 @@ class LangGraphVivekOrchestrator:
         self.current_mode = "peer"
         # instantiate executor for the initial mode with detected language
         from ..llm.executor import get_executor
-        self.executor = get_executor(self.current_mode, self.executor_provider, self.project_language)
+
+        self.executor = get_executor(
+            self.current_mode, self.executor_provider, self.project_language
+        )
 
         # Build graph
         self.graph = self._build_graph()
@@ -100,8 +100,7 @@ class LangGraphVivekOrchestrator:
         # This allows synchronous initialization
         self.app = self.graph.compile()
 
-        # Track current mode and context
-        self.current_mode = "peer"
+        # Track context (mode already set above at line 80)
         self.context: Dict[str, Any] = {
             "project_root": str(self.project_root),
             "current_mode": self.current_mode,
@@ -129,17 +128,17 @@ class LangGraphVivekOrchestrator:
         # Create workflow
         workflow = StateGraph(VivekState)
 
-        # Create nodes with factory functions
-        planner_node = create_planner_node(self.planner)
-        executor_node = create_executor_node(self.executor)
-        reviewer_node = create_reviewer_node(self.planner)
+        # Create enhanced nodes with structured workflow support
+        planner_node = create_enhanced_planner_node(self.planner, use_structured=True)
+        executor_node = create_enhanced_executor_node(self.executor)
+        reviewer_node = create_enhanced_reviewer_node(self.planner, use_structured=True)
 
         # Add nodes to graph
         workflow.add_node("planner", planner_node)
         workflow.add_node("executor", executor_node)
         workflow.add_node("reviewer", reviewer_node)
         workflow.add_node("clarification", clarification_node)
-        workflow.add_node("formatter", format_response_node)
+        workflow.add_node("formatter", create_enhanced_format_response_node())
 
         # Set entry point
         workflow.set_entry_point("planner")
@@ -181,7 +180,9 @@ class LangGraphVivekOrchestrator:
 
         return workflow
 
-    async def process_request(self, user_input: str, thread_id: str = "default") -> Dict[str, Any]:
+    async def process_request(
+        self, user_input: str, thread_id: str = "default"
+    ) -> Dict[str, Any]:
         """
         Process a user request through the graph.
 
@@ -205,8 +206,7 @@ class LangGraphVivekOrchestrator:
             ) as checkpointer:
                 # Compile with checkpointer and interrupt before clarification
                 app = self.graph.compile(
-                    checkpointer=checkpointer,
-                    interrupt_before=["clarification"]
+                    checkpointer=checkpointer, interrupt_before=["clarification"]
                 )
 
                 # Configuration for checkpointing
@@ -218,11 +218,14 @@ class LangGraphVivekOrchestrator:
         except Exception as e:
             # Log the error and return error response
             import logging
-            logging.error(f"Error processing request in thread {thread_id}: {e}", exc_info=True)
+
+            logging.error(
+                f"Error processing request in thread {thread_id}: {e}", exc_info=True
+            )
             return {
                 "status": "error",
                 "error": f"Failed to process request: {str(e)}",
-                "thread_id": thread_id
+                "thread_id": thread_id,
             }
 
         # Check if paused for clarification
@@ -232,7 +235,7 @@ class LangGraphVivekOrchestrator:
                 "questions": final_state.get("clarification_questions", []),
                 "from_node": final_state.get("clarification_from", "unknown"),
                 "clarification_output": final_state.get("clarification_output", ""),
-                "thread_id": thread_id
+                "thread_id": thread_id,
             }
 
         # Update context from final state (for next iteration)
@@ -242,10 +245,12 @@ class LangGraphVivekOrchestrator:
 
         return {
             "status": "complete",
-            "output": final_state.get("final_response", "No response generated")
+            "output": final_state.get("final_response", "No response generated"),
         }
 
-    async def resume_with_answers(self, thread_id: str, answers: Dict[str, str]) -> Dict[str, Any]:
+    async def resume_with_answers(
+        self, thread_id: str, answers: Dict[str, str]
+    ) -> Dict[str, Any]:
         """
         Resume execution after user provides clarification answers.
 
@@ -262,8 +267,7 @@ class LangGraphVivekOrchestrator:
             ) as checkpointer:
                 # Compile with checkpointer
                 app = self.graph.compile(
-                    checkpointer=checkpointer,
-                    interrupt_before=["clarification"]
+                    checkpointer=checkpointer, interrupt_before=["clarification"]
                 )
 
                 # Configuration
@@ -288,11 +292,14 @@ class LangGraphVivekOrchestrator:
         except Exception as e:
             # Log the error and return error response
             import logging
-            logging.error(f"Error resuming request in thread {thread_id}: {e}", exc_info=True)
+
+            logging.error(
+                f"Error resuming request in thread {thread_id}: {e}", exc_info=True
+            )
             return {
                 "status": "error",
                 "error": f"Failed to resume request: {str(e)}",
-                "thread_id": thread_id
+                "thread_id": thread_id,
             }
 
         # Check if paused again
@@ -302,12 +309,12 @@ class LangGraphVivekOrchestrator:
                 "questions": final_state.get("clarification_questions", []),
                 "from_node": final_state.get("clarification_from", "unknown"),
                 "clarification_output": final_state.get("clarification_output", ""),
-                "thread_id": thread_id
+                "thread_id": thread_id,
             }
 
         return {
             "status": "complete",
-            "output": final_state.get("final_response", "No response generated")
+            "output": final_state.get("final_response", "No response generated"),
         }
 
     async def stream_process_request(
@@ -348,17 +355,20 @@ class LangGraphVivekOrchestrator:
                     yield {
                         "event": event["event"],
                         "data": event["data"],
-                        "metadata": event.get("metadata", {})
+                        "metadata": event.get("metadata", {}),
                     }
 
         except Exception as e:
             # Log the error and yield error event
             import logging
-            logging.error(f"Error in streaming request for thread {thread_id}: {e}", exc_info=True)
+
+            logging.error(
+                f"Error in streaming request for thread {thread_id}: {e}", exc_info=True
+            )
             yield {
                 "event": "error",
                 "data": {"error": str(e)},
-                "metadata": {"thread_id": thread_id}
+                "metadata": {"thread_id": thread_id},
             }
 
     def switch_mode(self, mode: str) -> str:
@@ -377,7 +387,10 @@ class LangGraphVivekOrchestrator:
             self.context["current_mode"] = mode
             # update executor instance for the new mode with project language
             from ..llm.executor import get_executor
-            self.executor = get_executor(mode, self.executor_provider, self.project_language)
+
+            self.executor = get_executor(
+                mode, self.executor_provider, self.project_language
+            )
             return f"Switched to {mode} mode ({self.project_language})"
         else:
             return f"Invalid mode. Valid modes: {', '.join(valid_modes)}"

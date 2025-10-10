@@ -12,10 +12,10 @@ ignored_paths:
 - build/
 llm_configuration:
   auto_switch: true
-  executor_model: qwen2.5-coder-7b-instruct-mlx
+  executor_model: qwen2.5-coder:7b
   fallback_enabled: true
   mode: hybrid
-  planner_model: qwen2.5-coder-7b-instruct-mlx
+  planner_model: qwen2.5-coder:7b
 preferences:
   auto_index: true
   default_mode: peer

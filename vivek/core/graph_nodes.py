@@ -45,7 +45,7 @@ def create_planner_node(planner: PlannerModel):
         context_str = json.dumps(context, indent=2)
 
         # Check context size and warn if approaching limits
-        model_name = getattr(planner.provider, 'model_name', 'qwen2.5-coder:7b')
+        model_name = getattr(planner.provider, "model_name", "qwen2.5-coder:7b")
         context_tokens = TokenCounter.count_tokens(context_str, model_name)
         if context_tokens > 15000:  # Warning threshold
             print(
@@ -70,7 +70,7 @@ def create_planner_node(planner: PlannerModel):
                 "needs_clarification": True,
                 "clarification_from": message["from_node"],
                 "clarification_questions": message["payload"]["questions"],
-                "partial_task_plan": message.get("metadata", {}).get("partial_plan")
+                "partial_task_plan": message.get("metadata", {}).get("partial_plan"),
             }
 
         # Extract task plan from execution_complete message
@@ -79,7 +79,7 @@ def create_planner_node(planner: PlannerModel):
         return {
             "task_plan": task_plan_data,
             "mode": task_plan_data.get("mode", "coder"),
-            "needs_clarification": False
+            "needs_clarification": False,
         }
 
     return planner_node
@@ -131,7 +131,7 @@ def create_executor_node(executor):
             return {
                 "needs_clarification": True,
                 "clarification_from": message["from_node"],
-                "clarification_questions": message["payload"]["questions"]
+                "clarification_questions": message["payload"]["questions"],
             }
 
         if message["type"] == MessageType.ERROR.value:
@@ -139,16 +139,13 @@ def create_executor_node(executor):
             error_msg = message["payload"]["error"]
             return {
                 "executor_output": f"Error: {error_msg}",
-                "needs_clarification": False
+                "needs_clarification": False,
             }
 
         # Extract output from execution_complete message
         output = message["payload"]["output"]
 
-        return {
-            "executor_output": output,
-            "needs_clarification": False
-        }
+        return {"executor_output": output, "needs_clarification": False}
 
     return executor_node
 
@@ -190,7 +187,7 @@ def create_reviewer_node(planner: PlannerModel):
             return {
                 "needs_clarification": True,
                 "clarification_from": message["from_node"],
-                "clarification_questions": message["payload"]["questions"]
+                "clarification_questions": message["payload"]["questions"],
             }
 
         # Extract review data from execution_complete message
@@ -202,7 +199,7 @@ def create_reviewer_node(planner: PlannerModel):
         return {
             "review_result": review_data,
             "needs_clarification": False,
-            **iteration_update
+            **iteration_update,
         }
 
     return reviewer_node
@@ -246,6 +243,7 @@ def format_response_node(state: VivekState) -> Dict[str, str]:
 
 
 # Routing Functions for Conditional Edges
+
 
 def route_planner(state: VivekState) -> str:
     """Route after planner based on clarification need.
@@ -328,7 +326,7 @@ def clarification_node(state: VivekState) -> Dict[str, Any]:
         "",
         *formatted_questions,
         "",
-        "Please provide your answers to continue."
+        "Please provide your answers to continue.",
     ]
 
     clarification_output = "\n".join(output_lines)
@@ -337,5 +335,5 @@ def clarification_node(state: VivekState) -> Dict[str, Any]:
         "needs_clarification": True,
         "status": "paused",
         "clarification_output": clarification_output,
-        "clarification_from": from_node
+        "clarification_from": from_node,
     }

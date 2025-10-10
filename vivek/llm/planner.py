@@ -6,7 +6,10 @@ from vivek.core.message_protocol import (
 )
 
 import json
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class PlannerModel:
@@ -125,35 +128,41 @@ Otherwise output (JSON only):
     def _parse_task_plan(self, response: str) -> Dict[str, Any]:
         """Parse LLM response and return structured message to orchestrator."""
         try:
-            # Extract JSON from response
-            start = response.find("{")
-            end = response.rfind("}") + 1
+            # First, try to parse the entire response as JSON (for test mocks)
+            try:
+                data = json.loads(response.strip())
+            except json.JSONDecodeError:
+                # If that fails, extract JSON from response (for real LLM responses)
+                start = response.find("{")
+                end = response.rfind("}") + 1
 
-            if start == -1 or end == 0:
-                # No JSON found - return fallback
-                raise ValueError("No JSON found in response")
+                if start == -1 or end == 0:
+                    # No JSON found - return fallback
+                    raise ValueError("No JSON found in response")
 
-            json_str = response[start:end]
-            data = json.loads(json_str)
+                json_str = response[start:end]
+                data = json.loads(json_str)
 
             # Check if clarification needed
             if data.get("needs_clarification"):
                 return clarification_needed(
                     questions=data.get("questions", []),
                     from_node="planner",
-                    partial_plan=data.get("partial_plan", {})
+                    partial_plan=data.get("partial_plan", {}),
                 )
 
             # Parse work items
             work_items = []
             for item in data.get("work_items", []):
-                work_items.append({
-                    "mode": item.get("mode", "coder"),
-                    "file_path": item.get("file_path", ""),
-                    "file_status": item.get("file_status", "existing"),
-                    "description": item.get("description", ""),
-                    "dependencies": item.get("dependencies", [])
-                })
+                work_items.append(
+                    {
+                        "mode": item.get("mode", "coder"),
+                        "file_path": item.get("file_path", ""),
+                        "file_status": item.get("file_status", "existing"),
+                        "description": item.get("description", ""),
+                        "dependencies": item.get("dependencies", []),
+                    }
+                )
 
             task_plan = {
                 "description": data.get("description", ""),
@@ -168,22 +177,24 @@ Otherwise output (JSON only):
                 from_node="planner",
                 mode=task_plan["mode"],
                 work_items_count=len(work_items),
-                priority=task_plan["priority"]
+                priority=task_plan["priority"],
             )
 
         except Exception as e:
-            print(f"Error parsing task plan: {e}")
+            logger.error(f"Error parsing task plan: {e}", exc_info=True)
             # Return fallback as execution_complete for backward compatibility
             fallback_plan = {
                 "description": "Code implementation task",
                 "mode": "coder",
-                "work_items": [{
-                    "mode": "coder",
-                    "file_path": "",
-                    "file_status": "existing",
-                    "description": "Implement the requested functionality",
-                    "dependencies": []
-                }],
+                "work_items": [
+                    {
+                        "mode": "coder",
+                        "file_path": "",
+                        "file_status": "existing",
+                        "description": "Implement the requested functionality",
+                        "dependencies": [],
+                    }
+                ],
                 "priority": "normal",
             }
             return execution_complete(
@@ -192,29 +203,34 @@ Otherwise output (JSON only):
                 mode="coder",
                 work_items_count=1,
                 priority="normal",
-                parse_error=str(e)
+                parse_error=str(e),
             )
 
     def _parse_review(self, response: str) -> Dict[str, Any]:
         """Parse review response and return structured message to orchestrator."""
         error_msg = None
         try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
+            # First, try to parse the entire response as JSON (for test mocks)
+            try:
+                data = json.loads(response.strip())
+            except json.JSONDecodeError:
+                # If that fails, extract JSON from response (for real LLM responses)
+                start = response.find("{")
+                end = response.rfind("}") + 1
 
-            if start == -1 or end == 0:
-                # No JSON found
-                raise ValueError("No JSON found in response")
+                if start == -1 or end == 0:
+                    # No JSON found
+                    raise ValueError("No JSON found in response")
 
-            json_str = response[start:end]
-            data = json.loads(json_str)
+                json_str = response[start:end]
+                data = json.loads(json_str)
 
             # Check if requirements unclear (needs clarification)
             if data.get("requirements_unclear"):
                 return clarification_needed(
                     questions=data.get("unclear_points", []),
                     from_node="reviewer",
-                    current_quality=data.get("quality_score", 0.6)
+                    current_quality=data.get("quality_score", 0.6),
                 )
 
             # Normal review result
@@ -229,12 +245,12 @@ Otherwise output (JSON only):
                 output=review,
                 from_node="reviewer",
                 quality_score=review["quality_score"],
-                needs_iteration=review["needs_iteration"]
+                needs_iteration=review["needs_iteration"],
             )
 
         except Exception as e:
             error_msg = str(e)
-            print(f"Error parsing review: {error_msg}")
+            logger.error(f"Error parsing review: {error_msg}", exc_info=True)
 
         # Fallback
         fallback_review = {
@@ -248,5 +264,5 @@ Otherwise output (JSON only):
             from_node="reviewer",
             quality_score=0.7,
             needs_iteration=False,
-            parse_error=error_msg
+            parse_error=error_msg,
         )

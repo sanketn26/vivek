@@ -1,9 +1,11 @@
 """Prompt utilities for token management and optimization."""
+
 import re
 from typing import Dict, Any, Optional, List
 
 try:
     import tiktoken
+
     TIKTOKEN_AVAILABLE = True
 except ImportError:
     TIKTOKEN_AVAILABLE = False
@@ -39,7 +41,7 @@ class TokenCounter:
     TIKTOKEN_ENCODINGS = {
         "gpt": "cl100k_base",  # GPT-3.5/4
         "llama": "cl100k_base",  # Approximation for Llama models
-        "qwen": "cl100k_base",   # Approximation for Qwen models
+        "qwen": "cl100k_base",  # Approximation for Qwen models
         "deepseek": "cl100k_base",  # Approximation for DeepSeek models
         "codellama": "cl100k_base",  # Approximation for CodeLlama
         "mistral": "cl100k_base",  # Approximation for Mistral
@@ -93,7 +95,9 @@ class PromptCompressor:
     """Utilities for compressing and optimizing prompts."""
 
     @staticmethod
-    def truncate_context(context: str, max_tokens: int, strategy: str = "recent") -> str:
+    def truncate_context(
+        context: str, max_tokens: int, strategy: str = "recent"
+    ) -> str:
         """Truncate context to fit within token limit.
 
         Args:
@@ -111,27 +115,35 @@ class PromptCompressor:
 
         elif strategy == "summary":
             # Simple summarization by keeping important sections
-            lines = context.split('\n')
+            lines = context.split("\n")
             # Keep recent lines and any lines that look like summaries or decisions
             important_lines: List[str] = []
             for line in reversed(lines):
-                if any(keyword in line.lower() for keyword in
-                        ['decision:', 'summary:', 'key:', 'important:', 'conclusion:']):
+                if any(
+                    keyword in line.lower()
+                    for keyword in [
+                        "decision:",
+                        "summary:",
+                        "key:",
+                        "important:",
+                        "conclusion:",
+                    ]
+                ):
                     important_lines.insert(0, line)
                 elif len(important_lines) < max_tokens // 10:  # Keep some recent lines
                     important_lines.insert(0, line)
 
-            return '\n'.join(important_lines)
+            return "\n".join(important_lines)
 
         else:  # selective
             # Keep code blocks and recent content
-            lines = context.split('\n')
+            lines = context.split("\n")
             code_blocks: List[str] = []
             recent_lines: List[str] = []
 
             in_code_block = False
             for i, line in enumerate(reversed(lines)):
-                if line.strip().startswith('```'):
+                if line.strip().startswith("```"):
                     in_code_block = not in_code_block
                     code_blocks.insert(0, line)
                 elif in_code_block:
@@ -139,28 +151,28 @@ class PromptCompressor:
                 elif i < 20:  # Keep last 20 lines
                     recent_lines.insert(0, line)
 
-            return '\n'.join(code_blocks + recent_lines)
+            return "\n".join(code_blocks + recent_lines)
 
     @staticmethod
     def compress_prompt_template(system_prompt: str, task_info: Dict[str, Any]) -> str:
         """Compress verbose prompts into more efficient templates."""
         # Remove redundant instructions
-        compressed = re.sub(r'\s+', ' ', system_prompt.strip())
+        compressed = re.sub(r"\s+", " ", system_prompt.strip())
 
         # Build compact task description
         task_parts = []
-        if 'description' in task_info:
+        if "description" in task_info:
             task_parts.append(f"Task: {task_info['description']}")
-        if 'mode' in task_info:
+        if "mode" in task_info:
             task_parts.append(f"Mode: {task_info['mode']}")
-        if 'steps' in task_info and task_info['steps']:
-            steps_str = ' | '.join(task_info['steps'][:3])  # Limit to 3 steps
+        if "steps" in task_info and task_info["steps"]:
+            steps_str = " | ".join(task_info["steps"][:3])  # Limit to 3 steps
             task_parts.append(f"Steps: {steps_str}")
-        if 'relevant_files' in task_info and task_info['relevant_files']:
-            files_str = ', '.join(task_info['relevant_files'][:5])  # Limit to 5 files
+        if "relevant_files" in task_info and task_info["relevant_files"]:
+            files_str = ", ".join(task_info["relevant_files"][:5])  # Limit to 5 files
             task_parts.append(f"Files: {files_str}")
 
-        task_summary = ' | '.join(task_parts)
+        task_summary = " | ".join(task_parts)
 
         return f"{compressed}\n\n{task_summary}"
 
@@ -170,9 +182,7 @@ class PromptValidator:
 
     @staticmethod
     def validate_and_truncate(
-        prompt: str,
-        model_name: str,
-        max_tokens: Optional[int] = None
+        prompt: str, model_name: str, max_tokens: Optional[int] = None
     ) -> str:
         """Validate prompt length and truncate if necessary."""
         if max_tokens is None:
@@ -183,21 +193,21 @@ class PromptValidator:
         prompt_tokens = TokenCounter.count_tokens(prompt, model_name)
         if prompt_tokens > max_tokens:
             # Truncate context portion while keeping system prompt
-            lines = prompt.split('\n')
+            lines = prompt.split("\n")
             system_lines = []
             context_lines = []
 
             in_context = False
             for line in lines:
-                if line.startswith('Context:') or line.startswith('Current Context:'):
+                if line.startswith("Context:") or line.startswith("Current Context:"):
                     in_context = True
                 if not in_context:
                     system_lines.append(line)
                 else:
                     context_lines.append(line)
 
-            system_prompt = '\n'.join(system_lines)
-            context = '\n'.join(context_lines)
+            system_prompt = "\n".join(system_lines)
+            context = "\n".join(context_lines)
 
             # Compress context
             compressed_context = PromptCompressor.truncate_context(

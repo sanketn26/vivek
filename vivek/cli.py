@@ -128,7 +128,9 @@ def init(mode, local_model, executor_model):
 @cli.command()
 @click.option("--planner-model", help="Override planner model")
 @click.option("--executor-model", help="Override executor model")
-@click.option("--test-mode", is_flag=True, help="Run in test mode with detailed logging")
+@click.option(
+    "--test-mode", is_flag=True, help="Run in test mode with detailed logging"
+)
 @click.option("--test-input", help="Test input (for non-interactive testing)")
 @click.option("--log-file", help="Log file path for test mode")
 def chat(planner_model, executor_model, test_mode, test_input, log_file):
@@ -166,6 +168,7 @@ def chat(planner_model, executor_model, test_mode, test_input, log_file):
 
     # Discover language plugins before initializing orchestrator
     from vivek.llm.plugins.base.registry import discover_plugins
+
     plugin_count = discover_plugins()
 
     console.print(
@@ -197,7 +200,7 @@ def chat(planner_model, executor_model, test_mode, test_input, log_file):
         planner_model=planner,
         executor_model=executor,
         provider_type=provider_type,
-        provider_config=provider_config
+        provider_config=provider_config,
     )
 
     # Test mode or interactive mode
@@ -210,7 +213,9 @@ def chat(planner_model, executor_model, test_mode, test_input, log_file):
         asyncio.run(chat_loop(vivek))
 
 
-async def run_test_mode(vivek: LangGraphVivekOrchestrator, test_input: str, log_file: Optional[str]):
+async def run_test_mode(
+    vivek: LangGraphVivekOrchestrator, test_input: str, log_file: Optional[str]
+):
     """Run orchestrator in test mode with detailed logging."""
     import json
     from datetime import datetime
@@ -223,16 +228,22 @@ async def run_test_mode(vivek: LangGraphVivekOrchestrator, test_input: str, log_
         logger.log("TEST MODE", f"Input: {test_input}")
 
         # Wrap providers
-        vivek.planner.provider = LoggingProviderWrapper(vivek.planner.provider, logger, "PLANNER")
-        vivek.executor.provider = LoggingProviderWrapper(vivek.executor.provider, logger, "EXECUTOR")
+        vivek.planner.provider = LoggingProviderWrapper(
+            vivek.planner.provider, logger, "PLANNER"
+        )
+        vivek.executor.provider = LoggingProviderWrapper(
+            vivek.executor.provider, logger, "EXECUTOR"
+        )
 
-    console.print(Panel(
-        f"🧪 **Test Mode**\n\n"
-        f"Input: {test_input}\n"
-        f"Log: {log_file or 'Console only'}",
-        title="🤖 Vivek Test Mode",
-        style="yellow"
-    ))
+    console.print(
+        Panel(
+            f"🧪 **Test Mode**\n\n"
+            f"Input: {test_input}\n"
+            f"Log: {log_file or 'Console only'}",
+            title="🤖 Vivek Test Mode",
+            style="yellow",
+        )
+    )
 
     # Run orchestration
     start_time = datetime.now()
@@ -248,27 +259,33 @@ async def run_test_mode(vivek: LangGraphVivekOrchestrator, test_input: str, log_
     console.print(f"🔄 Iterations: {result.get('iteration_count', 0)}")
 
     if result["status"] == "complete":
-        console.print(Panel(
-            Markdown(result["output"]),
-            title="✅ Output",
-            style="green"
-        ))
+        console.print(
+            Panel(Markdown(result["output"]), title="✅ Output", style="green")
+        )
     else:
-        console.print(Panel(
-            result.get("clarification_output", "Unknown status"),
-            title="⚠️  Status",
-            style="yellow"
-        ))
+        console.print(
+            Panel(
+                result.get("clarification_output", "Unknown status"),
+                title="⚠️  Status",
+                style="yellow",
+            )
+        )
 
     # Save full result if log file specified
     if log_file:
         logger.log("FINAL RESULT", json.dumps(result, indent=2))
-        logger.log("METRICS", json.dumps({
-            "time_seconds": elapsed,
-            "quality_score": result.get('quality_score', 0),
-            "iteration_count": result.get('iteration_count', 0),
-            "status": result["status"]
-        }, indent=2))
+        logger.log(
+            "METRICS",
+            json.dumps(
+                {
+                    "time_seconds": elapsed,
+                    "quality_score": result.get("quality_score", 0),
+                    "iteration_count": result.get("iteration_count", 0),
+                    "status": result["status"],
+                },
+                indent=2,
+            ),
+        )
         console.print(f"\n📝 Full log saved to: {log_file}")
 
 
@@ -298,13 +315,25 @@ async def chat_loop(vivek: LangGraphVivekOrchestrator):
 
             # Handle different response types
             if result["status"] == "awaiting_clarification":
-                console.print(Panel(Markdown(result["clarification_output"]),
-                                   title="🤖 Vivek Needs Clarification", style="yellow"))
+                console.print(
+                    Panel(
+                        Markdown(result["clarification_output"]),
+                        title="🤖 Vivek Needs Clarification",
+                        style="yellow",
+                    )
+                )
             elif result["status"] == "complete":
-                console.print(Panel(Markdown(result["output"]), title="🤖 Vivek", style="cyan"))
+                console.print(
+                    Panel(Markdown(result["output"]), title="🤖 Vivek", style="cyan")
+                )
             else:
-                console.print(Panel(f"Error: {result.get('error', 'Unknown error')}",
-                                   title="❌ Error", style="red"))
+                console.print(
+                    Panel(
+                        f"Error: {result.get('error', 'Unknown error')}",
+                        title="❌ Error",
+                        style="red",
+                    )
+                )
 
         except KeyboardInterrupt:
             console.print("\n👋 Goodbye!", style="yellow")

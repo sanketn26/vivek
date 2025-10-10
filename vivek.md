@@ -8,8 +8,8 @@
 
 ## LLM Configuration
 - **Mode**: hybrid
-- **Planner Model**: qwen2.5-coder-7b-instruct-mlx
-- **Executor Model**: qwen2.5-coder-7b-instruct-mlx
+- **Planner Model**: qwen2.5-coder:7b
+- **Executor Model**: qwen2.5-coder:7b
 - **Fallback Enabled**: True
 - **Auto Switch**: True
 

@@ -5,6 +5,7 @@ from enum import Enum
 
 class TaskStatus(Enum):
     """File status values for work items."""
+
     NEW = "new"
     EXISTING = "existing"
     MODIFIED = "modified"
@@ -12,6 +13,7 @@ class TaskStatus(Enum):
 
 class Priority(Enum):
     """Priority levels for tasks."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -20,6 +22,7 @@ class Priority(Enum):
 
 class Mode(Enum):
     """Execution modes for different types of work."""
+
     CODER = "coder"
     ARCHITECT = "architect"
     PEER = "peer"
@@ -28,6 +31,7 @@ class Mode(Enum):
 
 class TokenLimits:
     """Token limits for different contexts."""
+
     MAX_CONTEXT_TOKENS = 3000
     MAX_OUTPUT_TOKENS = 1500
     PLANNER_CONTEXT_TOKENS = 2000
@@ -35,6 +39,7 @@ class TokenLimits:
 
 class CompressionStrategy:
     """Context compression strategies."""
+
     SELECTIVE = "selective"
     SUMMARY = "summary"
     RECENT = "recent"
@@ -42,6 +47,7 @@ class CompressionStrategy:
 
 class WorkItemKeys:
     """Standard keys used in work item dictionaries."""
+
     MODE = "mode"
     FILE_PATH = "file_path"
     FILE_STATUS = "file_status"
@@ -51,6 +57,7 @@ class WorkItemKeys:
 
 class TaskPlanKeys:
     """Standard keys used in task plan dictionaries."""
+
     DESCRIPTION = "description"
     MODE = "mode"
     WORK_ITEMS = "work_items"
@@ -59,6 +66,7 @@ class TaskPlanKeys:
 
 class MessageTypes:
     """Message type constants for consistency."""
+
     EXECUTION_COMPLETE = "execution_complete"
     CLARIFICATION_NEEDED = "clarification_needed"
     ERROR = "error"
@@ -66,6 +74,7 @@ class MessageTypes:
 
 class OutputFormatMarkers:
     """Markers used in prompt output formatting."""
+
     OUTPUT_FORMAT = "OUTPUT FORMAT"
     WORK_ITEM_HEADER = "### Work Item [N]: [file_path]"
     SUB_TASKS_HEADER = "**Sub-tasks:**"
@@ -78,6 +87,7 @@ class OutputFormatMarkers:
 
 class PromptSections:
     """Standard sections used in prompts."""
+
     MODE_INSTRUCTION = "MODE_INSTRUCTION"
     CONTEXT = "CONTEXT"
     TASK = "TASK"

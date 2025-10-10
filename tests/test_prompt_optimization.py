@@ -53,9 +53,9 @@ class TestPromptBaseline:
                     "description": "Add login function",
                     "file_status": "new",
                     "mode": "coder",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
     def _get_prompt_and_count(self, language: str, mode: str, provider, task_plan):
@@ -112,7 +112,9 @@ class TestPromptBaseline:
         assert token_count > 100
         print(f"\n[BASELINE] TypeScript Coder: {token_count} tokens")
 
-    def test_typescript_architect_prompt_baseline(self, mock_provider, sample_task_plan):
+    def test_typescript_architect_prompt_baseline(
+        self, mock_provider, sample_task_plan
+    ):
         """Baseline test for TypeScript architect prompt."""
         prompt, token_count = self._get_prompt_and_count(
             "typescript", Mode.ARCHITECT.value, mock_provider, sample_task_plan
@@ -204,9 +206,9 @@ class TestPromptQuality:
                     "description": "Add login function",
                     "file_status": "new",
                     "mode": "coder",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
     def test_prompt_contains_required_sections(self, mock_provider, sample_task_plan):
@@ -218,11 +220,17 @@ class TestPromptQuality:
         prompt_upper = prompt.upper()
         assert "CONTEXT" in prompt_upper, "Prompt should contain CONTEXT section"
         assert "TASK" in prompt_upper, "Prompt should contain TASK section"
-        assert "WORK" in prompt_upper and "ITEMS" in prompt_upper, "Prompt should contain WORK ITEMS section"
+        assert (
+            "WORK" in prompt_upper and "ITEMS" in prompt_upper
+        ), "Prompt should contain WORK ITEMS section"
         assert "PROCESS" in prompt_upper, "Prompt should contain PROCESS section"
-        assert "OUTPUT" in prompt_upper and "FORMAT" in prompt_upper, "Prompt should contain OUTPUT FORMAT section"
+        assert (
+            "OUTPUT" in prompt_upper and "FORMAT" in prompt_upper
+        ), "Prompt should contain OUTPUT FORMAT section"
 
-    def test_prompt_contains_language_conventions(self, mock_provider, sample_task_plan):
+    def test_prompt_contains_language_conventions(
+        self, mock_provider, sample_task_plan
+    ):
         """Test that prompts include language-specific conventions."""
         # Python
         executor = get_executor(Mode.CODER.value, mock_provider, "python")
@@ -250,17 +258,23 @@ class TestPromptQuality:
         # Check that get_code_example helper methods don't exist
         for plugin_module in [python, typescript, go]:
             # Get the plugin class
-            plugin_classes = [obj for name, obj in vars(plugin_module).items()
-                            if isinstance(obj, type) and name.endswith('LanguagePlugin')]
+            plugin_classes = [
+                obj
+                for name, obj in vars(plugin_module).items()
+                if isinstance(obj, type) and name.endswith("LanguagePlugin")
+            ]
 
             for plugin_class in plugin_classes:
                 # Plugin class should not have example helper methods
-                assert not hasattr(plugin_class, '_get_python_coder_example'), \
-                    f"{plugin_class.__name__} still has _get_python_coder_example method"
-                assert not hasattr(plugin_class, '_get_typescript_coder_example'), \
-                    f"{plugin_class.__name__} still has _get_typescript_coder_example method"
-                assert not hasattr(plugin_class, '_get_go_coder_example'), \
-                    f"{plugin_class.__name__} still has _get_go_coder_example method"
+                assert not hasattr(
+                    plugin_class, "_get_python_coder_example"
+                ), f"{plugin_class.__name__} still has _get_python_coder_example method"
+                assert not hasattr(
+                    plugin_class, "_get_typescript_coder_example"
+                ), f"{plugin_class.__name__} still has _get_typescript_coder_example method"
+                assert not hasattr(
+                    plugin_class, "_get_go_coder_example"
+                ), f"{plugin_class.__name__} still has _get_go_coder_example method"
 
     def test_instruction_token_limit(self, mock_provider, sample_task_plan):
         """Test that language-specific instructions are under 200 tokens.
@@ -282,8 +296,9 @@ class TestPromptQuality:
                     token_count = count_tokens_simple(instructions)
 
                     # Instructions should be concise (<200 tokens)
-                    assert token_count < 200, \
-                        f"{language}/{mode} instructions too long: {token_count} tokens"
+                    assert (
+                        token_count < 200
+                    ), f"{language}/{mode} instructions too long: {token_count} tokens"
 
     def test_minimal_convention_fields(self):
         """Test that LanguageConventions only has essential fields.
@@ -298,14 +313,15 @@ class TestPromptQuality:
         convention_fields = {f.name for f in fields(LanguageConventions)}
 
         # Only these fields should exist (essential for plugin operation)
-        essential_fields = {'language', 'extensions'}
+        essential_fields = {"language", "extensions"}
 
         # All other fields are unused bloat
         extra_fields = convention_fields - essential_fields
 
-        assert len(extra_fields) == 0, \
-            f"LanguageConventions has {len(extra_fields)} unused fields: {extra_fields}. " \
+        assert len(extra_fields) == 0, (
+            f"LanguageConventions has {len(extra_fields)} unused fields: {extra_fields}. "
             f"Only {essential_fields} are needed."
+        )
 
 
 class TestTokenCounting:
@@ -336,9 +352,9 @@ class TestTokenCounting:
                     "description": "Add login function",
                     "file_status": "new",
                     "mode": "coder",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
     def test_prompt_token_counting(self, mock_provider, sample_task_plan, caplog):
@@ -348,14 +364,16 @@ class TestTokenCounting:
         After implementation, it will pass (GREEN).
         """
         import logging
+
         caplog.set_level(logging.INFO)
 
         executor = get_executor(Mode.CODER.value, mock_provider, "python")
         prompt = executor.build_prompt(sample_task_plan, context="Test context")
 
         # Check that token count was logged
-        assert any("token" in record.message.lower() for record in caplog.records), \
-            "Executor should log token count when building prompt"
+        assert any(
+            "token" in record.message.lower() for record in caplog.records
+        ), "Executor should log token count when building prompt"
 
 
 class TestPluginPerformance:
@@ -388,5 +406,6 @@ class TestPluginPerformance:
         plugin2 = registry.get_best_plugin("python", "coder")
 
         # Should return the same instance (cached)
-        assert plugin1 is plugin2, \
-            "Registry should cache and return same plugin instance"
+        assert (
+            plugin1 is plugin2
+        ), "Registry should cache and return same plugin instance"

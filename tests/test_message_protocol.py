@@ -15,10 +15,7 @@ class TestMessageProtocol:
 
     def test_execution_complete_basic(self):
         """Test basic execution complete message."""
-        msg = execution_complete(
-            output="task completed",
-            from_node="planner"
-        )
+        msg = execution_complete(output="task completed", from_node="planner")
 
         assert msg["type"] == MessageType.EXECUTION_COMPLETE.value
         assert msg["payload"]["output"] == "task completed"
@@ -32,7 +29,7 @@ class TestMessageProtocol:
             from_node="executor_coder",
             files_modified=["src/main.py"],
             tests_run=5,
-            tests_passed=4
+            tests_passed=4,
         )
 
         assert msg["type"] == MessageType.EXECUTION_COMPLETE.value
@@ -49,14 +46,11 @@ class TestMessageProtocol:
                 "id": "q1",
                 "question": "Which file to modify?",
                 "type": "choice",
-                "options": ["file_a.py", "file_b.py"]
+                "options": ["file_a.py", "file_b.py"],
             }
         ]
 
-        msg = clarification_needed(
-            questions=questions,
-            from_node="executor_coder"
-        )
+        msg = clarification_needed(questions=questions, from_node="executor_coder")
 
         assert msg["type"] == MessageType.CLARIFICATION_NEEDED.value
         assert msg["payload"]["questions"] == questions
@@ -69,7 +63,7 @@ class TestMessageProtocol:
             {
                 "question": "Authentication method?",
                 "type": "choice",
-                "options": ["JWT", "OAuth2", "Session"]
+                "options": ["JWT", "OAuth2", "Session"],
             }
         ]
 
@@ -77,7 +71,7 @@ class TestMessageProtocol:
             questions=questions,
             from_node="executor_coder",
             partial_work="implemented skeleton",
-            analysis="found 3 auth patterns in codebase"
+            analysis="found 3 auth patterns in codebase",
         )
 
         assert msg["type"] == MessageType.CLARIFICATION_NEEDED.value
@@ -88,8 +82,7 @@ class TestMessageProtocol:
     def test_error_occurred_basic(self):
         """Test basic error message."""
         msg = error_occurred(
-            error="File not found: src/main.py",
-            from_node="executor_coder"
+            error="File not found: src/main.py", from_node="executor_coder"
         )
 
         assert msg["type"] == MessageType.ERROR.value
@@ -102,7 +95,7 @@ class TestMessageProtocol:
             error="JSON parse error",
             from_node="planner",
             stack_trace="...",
-            task_plan={"mode": "coder"}
+            task_plan={"mode": "coder"},
         )
 
         assert msg["type"] == MessageType.ERROR.value
@@ -113,9 +106,7 @@ class TestMessageProtocol:
     def test_partial_result_basic(self):
         """Test partial result message."""
         msg = partial_result(
-            output="step 1 complete",
-            from_node="executor_coder",
-            progress=0.33
+            output="step 1 complete", from_node="executor_coder", progress=0.33
         )
 
         assert msg["type"] == MessageType.PARTIAL_RESULT.value
@@ -130,7 +121,7 @@ class TestMessageProtocol:
             from_node="executor_coder",
             progress=0.5,
             current_step="write_tests",
-            completed_steps=["analyze", "design", "write_tests"]
+            completed_steps=["analyze", "design", "write_tests"],
         )
 
         assert msg["type"] == MessageType.PARTIAL_RESULT.value

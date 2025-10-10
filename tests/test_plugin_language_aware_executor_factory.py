@@ -18,6 +18,7 @@ from vivek.llm.constants import Mode
 
 # ===== PLUGIN INTERFACE TESTS =====
 
+
 class TestLanguagePluginInterface:
     """Test the LanguagePlugin base interface and its contract."""
 
@@ -46,13 +47,20 @@ class TestLanguagePluginInterface:
                 pass
 
             @abstractmethod
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 """Enhance the base prompt with language-specific improvements."""
                 pass
 
             @abstractmethod
-            def enhance_output_format(self, base_format: str, language: str, mode: str) -> str:
+            def enhance_output_format(
+                self, base_format: str, language: str, mode: str
+            ) -> str:
                 """Enhance output format with language-specific requirements."""
                 pass
 
@@ -67,13 +75,13 @@ class TestLanguagePluginInterface:
                 pass
 
         # Test that abstract methods are properly defined
-        assert hasattr(LanguagePlugin, 'name')
-        assert hasattr(LanguagePlugin, 'supported_languages')
-        assert hasattr(LanguagePlugin, 'supported_modes')
-        assert hasattr(LanguagePlugin, 'enhance_prompt')
-        assert hasattr(LanguagePlugin, 'enhance_output_format')
-        assert hasattr(LanguagePlugin, 'get_language_conventions')
-        assert hasattr(LanguagePlugin, 'validate_language_support')
+        assert hasattr(LanguagePlugin, "name")
+        assert hasattr(LanguagePlugin, "supported_languages")
+        assert hasattr(LanguagePlugin, "supported_modes")
+        assert hasattr(LanguagePlugin, "enhance_prompt")
+        assert hasattr(LanguagePlugin, "enhance_output_format")
+        assert hasattr(LanguagePlugin, "get_language_conventions")
+        assert hasattr(LanguagePlugin, "validate_language_support")
 
     def test_concrete_plugin_implementation(self):
         """Test that concrete plugins properly implement the interface."""
@@ -93,22 +101,32 @@ class TestLanguagePluginInterface:
             def supported_modes(self) -> List[str]:
                 return [Mode.CODER.value, Mode.ARCHITECT.value]
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 return f"{base_prompt}\n# Python Enhancement: Use PEP 8 style"
 
-            def enhance_output_format(self, base_format: str, language: str, mode: str) -> str:
+            def enhance_output_format(
+                self, base_format: str, language: str, mode: str
+            ) -> str:
                 return f"{base_format}\n# Python: Use type hints and docstrings"
 
             def get_language_conventions(self, language: str) -> Dict[str, str]:
                 return {
                     "imports": "Use explicit imports",
                     "types": "Use type hints",
-                    "style": "PEP 8"
+                    "style": "PEP 8",
                 }
 
             def validate_language_support(self, language: str, mode: str) -> bool:
-                return language.lower() == "python" and mode in [Mode.CODER.value, Mode.ARCHITECT.value]
+                return language.lower() == "python" and mode in [
+                    Mode.CODER.value,
+                    Mode.ARCHITECT.value,
+                ]
 
         plugin = TestPythonPlugin()
 
@@ -116,7 +134,9 @@ class TestLanguagePluginInterface:
         assert plugin.name == "python_plugin"
         assert plugin.supported_languages == ["python"]
         assert plugin.supported_modes == [Mode.CODER.value, Mode.ARCHITECT.value]
-        assert "Python Enhancement" in plugin.enhance_prompt("base", "python", "coder", {})
+        assert "Python Enhancement" in plugin.enhance_prompt(
+            "base", "python", "coder", {}
+        )
         assert "Python:" in plugin.enhance_output_format("format", "python", "coder")
         assert plugin.get_language_conventions("python")["style"] == "PEP 8"
         assert plugin.validate_language_support("python", "coder") is True
@@ -134,8 +154,13 @@ class TestLanguagePluginInterface:
                 pass
 
             @abstractmethod
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 pass
 
         # Test that incomplete implementations raise TypeError when calling abstract methods
@@ -147,7 +172,9 @@ class TestLanguagePluginInterface:
             # Missing enhance_prompt method
 
         # This will raise TypeError on instantiation because enhance_prompt is not implemented
-        with pytest.raises(TypeError, match="Can't instantiate abstract class IncompletePlugin"):
+        with pytest.raises(
+            TypeError, match="Can't instantiate abstract class IncompletePlugin"
+        ):
             plugin = IncompletePlugin()
 
         # Test that proper inheritance works
@@ -156,8 +183,13 @@ class TestLanguagePluginInterface:
             def name(self) -> str:
                 return "complete"
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 return base_prompt
 
         plugin = CompletePlugin()
@@ -165,6 +197,7 @@ class TestLanguagePluginInterface:
 
 
 # ===== REGISTRY TESTS =====
+
 
 class TestExecutorRegistry:
     """Test the ExecutorRegistry for plugin registration and discovery."""
@@ -193,7 +226,8 @@ class TestExecutorRegistry:
             def find_plugins_for_language(self, language: str) -> List[Any]:
                 """Find all plugins supporting a specific language."""
                 return [
-                    plugin for plugin in self._plugins.values()
+                    plugin
+                    for plugin in self._plugins.values()
                     if language.lower() in plugin.supported_languages
                 ]
 
@@ -222,7 +256,8 @@ class TestExecutorRegistry:
 
             def find_plugins_for_language(self, language: str) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
+                    plugin
+                    for plugin in self._plugins.values()
                     if language.lower() in plugin.supported_languages
                 ]
 
@@ -258,7 +293,7 @@ class TestExecutorRegistry:
                 self._plugins: Dict[str, Any] = {}
 
             def register_plugin(self, plugin) -> None:
-                if not hasattr(plugin, 'name'):
+                if not hasattr(plugin, "name"):
                     raise ValueError("Plugin must have a name attribute")
                 if plugin.name in self._plugins:
                     raise ValueError(f"Plugin '{plugin.name}' already registered")
@@ -295,12 +330,17 @@ class TestExecutorRegistry:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 """Find plugins supporting both language and mode."""
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         # Create plugins with different language/mode support
@@ -325,17 +365,26 @@ class TestExecutorRegistry:
         registry.register_plugin(MultiModePlugin())
 
         # Test filtering
-        python_coder_plugins = registry.find_plugins_for_language_mode("python", Mode.CODER.value)
+        python_coder_plugins = registry.find_plugins_for_language_mode(
+            "python", Mode.CODER.value
+        )
         assert len(python_coder_plugins) == 2  # PythonCoderPlugin and MultiModePlugin
 
-        python_architect_plugins = registry.find_plugins_for_language_mode("python", Mode.ARCHITECT.value)
-        assert len(python_architect_plugins) == 2  # PythonArchitectPlugin and MultiModePlugin
+        python_architect_plugins = registry.find_plugins_for_language_mode(
+            "python", Mode.ARCHITECT.value
+        )
+        assert (
+            len(python_architect_plugins) == 2
+        )  # PythonArchitectPlugin and MultiModePlugin
 
-        typescript_plugins = registry.find_plugins_for_language_mode("typescript", Mode.CODER.value)
+        typescript_plugins = registry.find_plugins_for_language_mode(
+            "typescript", Mode.CODER.value
+        )
         assert len(typescript_plugins) == 1  # Only MultiModePlugin
 
 
 # ===== FACTORY TESTS =====
+
 
 class TestEnhancedExecutorFactory:
     """Test the enhanced get_executor function with plugin support."""
@@ -350,11 +399,16 @@ class TestEnhancedExecutorFactory:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         class MockLanguageDetector:
@@ -362,9 +416,12 @@ class TestEnhancedExecutorFactory:
             def get_primary_language(cls):
                 return "python"
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry: Optional[ExecutorRegistry] = None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry: Optional[ExecutorRegistry] = None,
+        ) -> BaseExecutor:
             """Enhanced factory with plugin support."""
 
             # Auto-detect language if not provided
@@ -377,14 +434,18 @@ class TestEnhancedExecutorFactory:
             # Find applicable plugins
             applicable_plugins = []
             if plugin_registry:
-                applicable_plugins = plugin_registry.find_plugins_for_language_mode(language, mode)
+                applicable_plugins = plugin_registry.find_plugins_for_language_mode(
+                    language, mode
+                )
 
             # Create base executor (existing logic)
             base_executor = get_executor(mode, provider, language)
 
             # Enhance with plugins if available
             if applicable_plugins:
-                enhanced_executor = PluginEnhancedExecutor(base_executor, applicable_plugins, language, mode)
+                enhanced_executor = PluginEnhancedExecutor(
+                    base_executor, applicable_plugins, language, mode
+                )
                 return enhanced_executor
 
             return base_executor
@@ -422,11 +483,16 @@ class TestEnhancedExecutorFactory:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         class PluginEnhancedExecutor:
@@ -437,21 +503,28 @@ class TestEnhancedExecutorFactory:
                 self.mode = mode
                 self.enhanced = True
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry: Optional[ExecutorRegistry] = None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry: Optional[ExecutorRegistry] = None,
+        ) -> BaseExecutor:
             """Enhanced factory with plugin support."""
             language = language or "python"
             language = language.lower()
 
             applicable_plugins = []
             if plugin_registry:
-                applicable_plugins = plugin_registry.find_plugins_for_language_mode(language, mode)
+                applicable_plugins = plugin_registry.find_plugins_for_language_mode(
+                    language, mode
+                )
 
             base_executor = get_executor(mode, provider, language)
 
             if applicable_plugins:
-                return PluginEnhancedExecutor(base_executor, applicable_plugins, language, mode)
+                return PluginEnhancedExecutor(
+                    base_executor, applicable_plugins, language, mode
+                )
 
             return base_executor
 
@@ -464,7 +537,7 @@ class TestEnhancedExecutorFactory:
 
         # Test enhancement
         executor = enhanced_get_executor("coder", provider, "python", registry)
-        assert hasattr(executor, 'enhanced')
+        assert hasattr(executor, "enhanced")
         assert executor.enhanced is True
         assert len(executor.plugins) == 1
         assert executor.language == "python"
@@ -487,11 +560,16 @@ class TestEnhancedExecutorFactory:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 plugins = [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
                 # Return plugins sorted by priority (highest first)
                 return sorted(plugins, key=lambda p: p.priority, reverse=True)
@@ -503,27 +581,38 @@ class TestEnhancedExecutorFactory:
                 self.language = language
                 self.mode = mode
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry: Optional[ExecutorRegistry] = None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry: Optional[ExecutorRegistry] = None,
+        ) -> BaseExecutor:
             language = language or "python"
             language = language.lower()
 
             applicable_plugins = []
             if plugin_registry:
-                applicable_plugins = plugin_registry.find_plugins_for_language_mode(language, mode)
+                applicable_plugins = plugin_registry.find_plugins_for_language_mode(
+                    language, mode
+                )
 
             base_executor = get_executor(mode, provider, language)
 
             if applicable_plugins:
-                return PluginEnhancedExecutor(base_executor, applicable_plugins, language, mode)
+                return PluginEnhancedExecutor(
+                    base_executor, applicable_plugins, language, mode
+                )
 
             return base_executor
 
         # Setup plugins with different priorities
         registry = ExecutorRegistry()
-        high_priority_plugin = MockPlugin("high_priority", ["python"], [Mode.CODER.value], priority=10)
-        low_priority_plugin = MockPlugin("low_priority", ["python"], [Mode.CODER.value], priority=1)
+        high_priority_plugin = MockPlugin(
+            "high_priority", ["python"], [Mode.CODER.value], priority=10
+        )
+        low_priority_plugin = MockPlugin(
+            "low_priority", ["python"], [Mode.CODER.value], priority=1
+        )
         registry.register_plugin(high_priority_plugin)
         registry.register_plugin(low_priority_plugin)
 
@@ -536,6 +625,7 @@ class TestEnhancedExecutorFactory:
 
 
 # ===== LANGUAGE ENHANCEMENT TESTS =====
+
 
 class TestLanguageEnhancement:
     """Test that executors are properly enhanced with language plugins."""
@@ -550,8 +640,13 @@ class TestLanguageEnhancement:
                 self.supported_languages = ["python"]
                 self.supported_modes = [Mode.CODER.value]
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 return f"{base_prompt}\n# Plugin Enhancement: {self.enhancement_text}"
 
         class PluginEnhancedExecutor:
@@ -569,7 +664,10 @@ class TestLanguageEnhancement:
                 enhanced_prompt = base_prompt
                 for plugin in self.plugins:
                     enhanced_prompt = plugin.enhance_prompt(
-                        enhanced_prompt, self.language, self.mode, {"task_plan": task_plan}
+                        enhanced_prompt,
+                        self.language,
+                        self.mode,
+                        {"task_plan": task_plan},
                     )
 
                 return enhanced_prompt
@@ -581,7 +679,9 @@ class TestLanguageEnhancement:
         plugin1 = MockPlugin("plugin1", "Use type hints")
         plugin2 = MockPlugin("plugin2", "Follow PEP 8")
 
-        enhanced_executor = PluginEnhancedExecutor(base_executor, [plugin1, plugin2], "python", "coder")
+        enhanced_executor = PluginEnhancedExecutor(
+            base_executor, [plugin1, plugin2], "python", "coder"
+        )
 
         task_plan = {"description": "test task"}
         result_prompt = enhanced_executor.build_prompt(task_plan, "context")
@@ -602,7 +702,9 @@ class TestLanguageEnhancement:
                 self.supported_languages = ["python"]
                 self.supported_modes = [Mode.CODER.value]
 
-            def enhance_output_format(self, base_format: str, language: str, mode: str) -> str:
+            def enhance_output_format(
+                self, base_format: str, language: str, mode: str
+            ) -> str:
                 return f"{base_format}\n# Format Enhancement: {self.format_enhancement}"
 
         class PluginEnhancedExecutor:
@@ -630,7 +732,9 @@ class TestLanguageEnhancement:
 
         plugin = MockPlugin("python_plugin", "Include type hints and docstrings")
 
-        enhanced_executor = PluginEnhancedExecutor(base_executor, [plugin], "python", "coder")
+        enhanced_executor = PluginEnhancedExecutor(
+            base_executor, [plugin], "python", "coder"
+        )
 
         result_format = enhanced_executor.get_mode_specific_output_format()
 
@@ -672,10 +776,16 @@ class TestLanguageEnhancement:
         # Setup
         base_executor = Mock()
 
-        plugin1 = MockPlugin("plugin1", {"imports": "Use explicit imports", "types": "Use type hints"})
-        plugin2 = MockPlugin("plugin2", {"docs": "Write docstrings", "style": "Follow PEP 8"})
+        plugin1 = MockPlugin(
+            "plugin1", {"imports": "Use explicit imports", "types": "Use type hints"}
+        )
+        plugin2 = MockPlugin(
+            "plugin2", {"docs": "Write docstrings", "style": "Follow PEP 8"}
+        )
 
-        enhanced_executor = PluginEnhancedExecutor(base_executor, [plugin1, plugin2], "python", "coder")
+        enhanced_executor = PluginEnhancedExecutor(
+            base_executor, [plugin1, plugin2], "python", "coder"
+        )
 
         conventions = enhanced_executor.get_language_conventions()
 
@@ -689,6 +799,7 @@ class TestLanguageEnhancement:
 
 # ===== BACKWARD COMPATIBILITY TESTS =====
 
+
 class TestBackwardCompatibility:
     """Test that existing functionality still works with plugin system."""
 
@@ -698,9 +809,12 @@ class TestBackwardCompatibility:
         # Mock the original get_executor function
         original_get_executor = get_executor
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry=None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry=None,
+        ) -> BaseExecutor:
             """Enhanced version that falls back to original behavior when no plugins."""
 
             # If no plugins available, use original logic
@@ -752,8 +866,8 @@ class TestBackwardCompatibility:
 
         # Should have language-aware functionality from plugin
         assert executor is not None
-        assert hasattr(executor, 'language')
-        assert hasattr(executor, 'mode')
+        assert hasattr(executor, "language")
+        assert hasattr(executor, "mode")
 
     def test_existing_mode_language_mapping_preserved(self):
         """Test that existing mode+language mapping logic is preserved."""
@@ -781,6 +895,7 @@ class TestBackwardCompatibility:
 
 # ===== DYNAMIC REGISTRATION TESTS =====
 
+
 class TestDynamicRegistration:
     """Test adding new languages at runtime."""
 
@@ -797,11 +912,16 @@ class TestDynamicRegistration:
             def list_plugins(self) -> List[str]:
                 return list(self._plugins.keys())
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         class MockPlugin:
@@ -837,15 +957,22 @@ class TestDynamicRegistration:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 """Find plugins supporting both language and mode."""
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
-            def update_plugin_languages(self, plugin_name: str, new_languages: List[str]) -> None:
+            def update_plugin_languages(
+                self, plugin_name: str, new_languages: List[str]
+            ) -> None:
                 """Update supported languages for a plugin."""
                 if plugin_name in self._plugins:
                     self._plugins[plugin_name].supported_languages.extend(new_languages)
@@ -859,7 +986,9 @@ class TestDynamicRegistration:
         registry = ExecutorRegistry()
 
         # Register initial plugin
-        plugin = MockPlugin("multi_lang_plugin", ["python", "typescript"], [Mode.CODER.value])
+        plugin = MockPlugin(
+            "multi_lang_plugin", ["python", "typescript"], [Mode.CODER.value]
+        )
         registry.register_plugin(plugin)
 
         # Add new language support at runtime
@@ -873,11 +1002,14 @@ class TestDynamicRegistration:
         assert len(rust_plugins) == 1
 
         # Should still support original languages
-        python_plugins = registry.find_plugins_for_language_mode("python", Mode.CODER.value)
+        python_plugins = registry.find_plugins_for_language_mode(
+            "python", Mode.CODER.value
+        )
         assert len(python_plugins) == 1
 
 
 # ===== ERROR HANDLING TESTS =====
+
 
 class TestErrorHandling:
     """Test graceful fallback when plugins fail."""
@@ -891,11 +1023,18 @@ class TestErrorHandling:
                 self.supported_languages = ["python"]
                 self.supported_modes = [Mode.CODER.value]
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 raise Exception("Plugin failed!")
 
-            def enhance_output_format(self, base_format: str, language: str, mode: str) -> str:
+            def enhance_output_format(
+                self, base_format: str, language: str, mode: str
+            ) -> str:
                 raise Exception("Plugin failed!")
 
         class ErrorResilientExecutor:
@@ -913,7 +1052,10 @@ class TestErrorHandling:
                 for plugin in self.plugins:
                     try:
                         enhanced_prompt = plugin.enhance_prompt(
-                            enhanced_prompt, self.language, self.mode, {"task_plan": task_plan}
+                            enhanced_prompt,
+                            self.language,
+                            self.mode,
+                            {"task_plan": task_plan},
                         )
                     except Exception:
                         # Log error but continue with base prompt
@@ -926,7 +1068,9 @@ class TestErrorHandling:
         base_executor.build_prompt.return_value = "Base prompt"
 
         failing_plugin = FailingPlugin("failing_plugin")
-        executor = ErrorResilientExecutor(base_executor, [failing_plugin], "python", "coder")
+        executor = ErrorResilientExecutor(
+            base_executor, [failing_plugin], "python", "coder"
+        )
 
         task_plan = {"description": "test"}
         result = executor.build_prompt(task_plan, "context")
@@ -944,26 +1088,30 @@ class TestErrorHandling:
 
             def register_plugin(self, plugin) -> None:
                 """Register plugin with validation."""
-                if not hasattr(plugin, 'name'):
+                if not hasattr(plugin, "name"):
                     raise ValueError("Plugin must have a 'name' attribute")
 
-                if not hasattr(plugin, 'supported_languages'):
+                if not hasattr(plugin, "supported_languages"):
                     raise ValueError("Plugin must have 'supported_languages' attribute")
 
-                if not hasattr(plugin, 'supported_modes'):
+                if not hasattr(plugin, "supported_modes"):
                     raise ValueError("Plugin must have 'supported_modes' attribute")
 
-                if not hasattr(plugin, 'enhance_prompt'):
+                if not hasattr(plugin, "enhance_prompt"):
                     raise ValueError("Plugin must have 'enhance_prompt' method")
 
-                if not hasattr(plugin, 'enhance_output_format'):
+                if not hasattr(plugin, "enhance_output_format"):
                     raise ValueError("Plugin must have 'enhance_output_format' method")
 
-                if not hasattr(plugin, 'get_language_conventions'):
-                    raise ValueError("Plugin must have 'get_language_conventions' method")
+                if not hasattr(plugin, "get_language_conventions"):
+                    raise ValueError(
+                        "Plugin must have 'get_language_conventions' method"
+                    )
 
-                if not hasattr(plugin, 'validate_language_support'):
-                    raise ValueError("Plugin must have 'validate_language_support' method")
+                if not hasattr(plugin, "validate_language_support"):
+                    raise ValueError(
+                        "Plugin must have 'validate_language_support' method"
+                    )
 
                 self._plugins[plugin.name] = plugin
 
@@ -984,7 +1132,9 @@ class TestErrorHandling:
                 self.supported_modes = [Mode.CODER.value]
                 # Missing other required methods/attributes
 
-        with pytest.raises(ValueError, match="Plugin must have 'enhance_prompt' method"):
+        with pytest.raises(
+            ValueError, match="Plugin must have 'enhance_prompt' method"
+        ):
             registry.register_plugin(IncompletePlugin())
 
     def test_graceful_degradation_on_plugin_errors(self):
@@ -1004,7 +1154,9 @@ class TestErrorHandling:
                 combined_instructions = base_instructions
                 for plugin in self.plugins:
                     try:
-                        plugin_instructions = plugin.get_language_specific_instructions(self.language)
+                        plugin_instructions = plugin.get_language_specific_instructions(
+                            self.language
+                        )
                         combined_instructions += f"\n{plugin_instructions}"
                     except Exception:
                         # Skip failing plugins
@@ -1026,10 +1178,7 @@ class TestErrorHandling:
                 raise Exception("Plugin error")
 
         executor = ErrorResilientExecutor(
-            base_executor,
-            [WorkingPlugin(), FailingPlugin()],
-            "python",
-            "coder"
+            base_executor, [WorkingPlugin(), FailingPlugin()], "python", "coder"
         )
 
         result = executor.get_mode_specific_instructions()
@@ -1041,6 +1190,7 @@ class TestErrorHandling:
 
 
 # ===== INTEGRATION TESTS =====
+
 
 class TestCompleteFlowIntegration:
     """Test the complete flow from mode+language to enhanced executor."""
@@ -1060,8 +1210,13 @@ class TestCompleteFlowIntegration:
                 self.supported_modes = modes
                 self.call_count = 0
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 self.call_count += 1
                 return f"{base_prompt}\n# Enhanced by {self.name}"
 
@@ -1072,11 +1227,16 @@ class TestCompleteFlowIntegration:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         class PluginEnhancedExecutor:
@@ -1096,12 +1256,17 @@ class TestCompleteFlowIntegration:
                 enhanced_prompt = base_prompt
                 for plugin in self.plugins:
                     enhanced_prompt = plugin.enhance_prompt(
-                        enhanced_prompt, self.language, self.mode, {"task_plan": task_plan}
+                        enhanced_prompt,
+                        self.language,
+                        self.mode,
+                        {"task_plan": task_plan},
                     )
 
                 return enhanced_prompt
 
-            def execute_task(self, task_plan: Dict[str, Any], context: str) -> Dict[str, Any]:
+            def execute_task(
+                self, task_plan: Dict[str, Any], context: str
+            ) -> Dict[str, Any]:
                 """Execute task with plugin enhancements."""
                 prompt = self.build_prompt(task_plan, context)
                 # Simulate LLM call
@@ -1111,12 +1276,15 @@ class TestCompleteFlowIntegration:
                 return {
                     "type": "execution_complete",
                     "output": output,
-                    "enhanced_by_plugins": [p.name for p in self.plugins]
+                    "enhanced_by_plugins": [p.name for p in self.plugins],
                 }
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry: Optional[ExecutorRegistry] = None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry: Optional[ExecutorRegistry] = None,
+        ) -> BaseExecutor:
             """Complete enhanced factory."""
             if language is None:
                 language = MockLanguageDetector.get_primary_language()
@@ -1125,13 +1293,17 @@ class TestCompleteFlowIntegration:
 
             applicable_plugins = []
             if plugin_registry:
-                applicable_plugins = plugin_registry.find_plugins_for_language_mode(language, mode)
+                applicable_plugins = plugin_registry.find_plugins_for_language_mode(
+                    language, mode
+                )
 
             # Use original get_executor logic for base executor
             base_executor = get_executor(mode, provider, language)
 
             if applicable_plugins:
-                return PluginEnhancedExecutor(base_executor, applicable_plugins, language, mode)
+                return PluginEnhancedExecutor(
+                    base_executor, applicable_plugins, language, mode
+                )
 
             return base_executor
 
@@ -1146,7 +1318,7 @@ class TestCompleteFlowIntegration:
         executor = enhanced_get_executor("coder", provider, "python", registry)
 
         # Verify it's enhanced
-        assert hasattr(executor, 'plugins')
+        assert hasattr(executor, "plugins")
         assert len(executor.plugins) == 1
         assert executor.language == "python"
 
@@ -1172,8 +1344,13 @@ class TestCompleteFlowIntegration:
                 self.supported_languages = ["python"]
                 self.supported_modes = [Mode.CODER.value]
 
-            def enhance_prompt(self, base_prompt: str, language: str, mode: str,
-                             context: Dict[str, Any]) -> str:
+            def enhance_prompt(
+                self,
+                base_prompt: str,
+                language: str,
+                mode: str,
+                context: Dict[str, Any],
+            ) -> str:
                 return f"{base_prompt}\n# {self.name}: {self.enhancement}"
 
         class ExecutorRegistry:
@@ -1183,11 +1360,16 @@ class TestCompleteFlowIntegration:
             def register_plugin(self, plugin) -> None:
                 self._plugins[plugin.name] = plugin
 
-            def find_plugins_for_language_mode(self, language: str, mode: str) -> List[Any]:
+            def find_plugins_for_language_mode(
+                self, language: str, mode: str
+            ) -> List[Any]:
                 return [
-                    plugin for plugin in self._plugins.values()
-                    if (language.lower() in plugin.supported_languages and
-                        mode.lower() in plugin.supported_modes)
+                    plugin
+                    for plugin in self._plugins.values()
+                    if (
+                        language.lower() in plugin.supported_languages
+                        and mode.lower() in plugin.supported_modes
+                    )
                 ]
 
         class MultiPluginExecutor:
@@ -1204,25 +1386,35 @@ class TestCompleteFlowIntegration:
                 enhanced_prompt = base_prompt
                 for plugin in self.plugins:
                     enhanced_prompt = plugin.enhance_prompt(
-                        enhanced_prompt, self.language, self.mode, {"task_plan": task_plan}
+                        enhanced_prompt,
+                        self.language,
+                        self.mode,
+                        {"task_plan": task_plan},
                     )
 
                 return enhanced_prompt
 
-        def enhanced_get_executor(mode: str, provider: LLMProvider,
-                                language: Optional[str] = None,
-                                plugin_registry: Optional[ExecutorRegistry] = None) -> BaseExecutor:
+        def enhanced_get_executor(
+            mode: str,
+            provider: LLMProvider,
+            language: Optional[str] = None,
+            plugin_registry: Optional[ExecutorRegistry] = None,
+        ) -> BaseExecutor:
             language = language or "python"
             language = language.lower()
 
             applicable_plugins = []
             if plugin_registry:
-                applicable_plugins = plugin_registry.find_plugins_for_language_mode(language, mode)
+                applicable_plugins = plugin_registry.find_plugins_for_language_mode(
+                    language, mode
+                )
 
             base_executor = get_executor(mode, provider, language)
 
             if applicable_plugins:
-                return MultiPluginExecutor(base_executor, applicable_plugins, language, mode)
+                return MultiPluginExecutor(
+                    base_executor, applicable_plugins, language, mode
+                )
 
             return base_executor
 

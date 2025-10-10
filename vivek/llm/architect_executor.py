@@ -88,4 +88,6 @@ Design system architecture:
 
     def get_max_context_tokens(self) -> int:
         """Architect mode needs more context for comprehensive system analysis."""
-        return TokenLimits.PLANNER_CONTEXT_TOKENS  # Use planner's context size for comprehensive analysis
+        return (
+            TokenLimits.PLANNER_CONTEXT_TOKENS
+        )  # Use planner's context size for comprehensive analysis

@@ -11,9 +11,7 @@ class MessageType(Enum):
     PARTIAL_RESULT = "partial_result"
 
 
-def execution_complete(
-    output: Any, from_node: str, **metadata
-) -> Dict[str, Any]:
+def execution_complete(output: Any, from_node: str, **metadata) -> Dict[str, Any]:
     """Create execution complete message.
 
     Args:

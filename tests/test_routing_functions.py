@@ -15,7 +15,7 @@ class TestRoutingFunctions:
             "user_input": "test",
             "context": {},
             "needs_clarification": False,
-            "task_plan": {"mode": "coder"}
+            "task_plan": {"mode": "coder"},
         }
 
         next_node = route_planner(state)
@@ -30,7 +30,7 @@ class TestRoutingFunctions:
             "context": {},
             "needs_clarification": True,
             "clarification_from": "planner",
-            "clarification_questions": [{"question": "test?"}]
+            "clarification_questions": [{"question": "test?"}],
         }
 
         next_node = route_planner(state)
@@ -45,7 +45,7 @@ class TestRoutingFunctions:
             "context": {},
             "task_plan": {"mode": "coder"},
             "executor_output": "test output",
-            "needs_clarification": False
+            "needs_clarification": False,
         }
 
         next_node = route_executor(state)
@@ -60,7 +60,7 @@ class TestRoutingFunctions:
             "context": {},
             "task_plan": {"mode": "coder"},
             "needs_clarification": True,
-            "clarification_from": "executor_coder"
+            "clarification_from": "executor_coder",
         }
 
         next_node = route_executor(state)
@@ -77,7 +77,7 @@ class TestRoutingFunctions:
             "executor_output": "output",
             "review_result": {"quality_score": 0.8},
             "needs_clarification": True,
-            "clarification_from": "reviewer"
+            "clarification_from": "reviewer",
         }
 
         next_node = route_reviewer(state)
@@ -92,12 +92,9 @@ class TestRoutingFunctions:
             "context": {},
             "task_plan": {"mode": "coder"},
             "executor_output": "output",
-            "review_result": {
-                "quality_score": 0.5,
-                "needs_iteration": True
-            },
+            "review_result": {"quality_score": 0.5, "needs_iteration": True},
             "needs_clarification": False,
-            "iteration_count": 1
+            "iteration_count": 1,
         }
 
         next_node = route_reviewer(state)
@@ -112,11 +109,8 @@ class TestRoutingFunctions:
             "context": {},
             "task_plan": {"mode": "coder"},
             "executor_output": "output",
-            "review_result": {
-                "quality_score": 0.9,
-                "needs_iteration": False
-            },
-            "needs_clarification": False
+            "review_result": {"quality_score": 0.9, "needs_iteration": False},
+            "needs_clarification": False,
         }
 
         next_node = route_reviewer(state)
@@ -131,12 +125,9 @@ class TestRoutingFunctions:
             "context": {},
             "task_plan": {"mode": "coder"},
             "executor_output": "output",
-            "review_result": {
-                "quality_score": 0.5,
-                "needs_iteration": True
-            },
+            "review_result": {"quality_score": 0.5, "needs_iteration": True},
             "needs_clarification": False,
-            "iteration_count": 3  # Max iterations
+            "iteration_count": 3,  # Max iterations
         }
 
         next_node = route_reviewer(state)
@@ -159,9 +150,9 @@ class TestClarificationNode:
                 {
                     "question": "Which framework to use?",
                     "type": "choice",
-                    "options": ["pytest", "unittest"]
+                    "options": ["pytest", "unittest"],
                 }
-            ]
+            ],
         }
 
         result = clarification_node(state)
@@ -184,8 +175,8 @@ class TestClarificationNode:
             "clarification_from": "executor_coder",
             "clarification_questions": [
                 {"question": "Question 1?", "type": "text"},
-                {"question": "Question 2?", "type": "choice", "options": ["A", "B"]}
-            ]
+                {"question": "Question 2?", "type": "choice", "options": ["A", "B"]},
+            ],
         }
 
         result = clarification_node(state)
@@ -209,9 +200,9 @@ class TestClarificationNode:
                     "question": "Which one?",
                     "type": "choice",
                     "options": ["A", "B"],
-                    "context": "Based on your project structure"
+                    "context": "Based on your project structure",
                 }
-            ]
+            ],
         }
 
         result = clarification_node(state)
@@ -228,7 +219,7 @@ class TestClarificationNode:
             "context": {"project": "test"},
             "task_plan": {"mode": "coder"},
             "clarification_from": "executor_coder",
-            "clarification_questions": [{"question": "test?"}]
+            "clarification_questions": [{"question": "test?"}],
         }
 
         result = clarification_node(state)

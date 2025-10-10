@@ -28,9 +28,9 @@ class TestMagicStringsAndConstants:
                     "file_path": "test.py",
                     "file_status": "new",  # This is a magic string!
                     "description": "test work item",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
         # Currently this works but uses magic strings
@@ -57,7 +57,7 @@ class TestMagicStringsAndConstants:
             "description": "test task",
             "mode": "coder",
             "priority": "normal",  # Magic string!
-            "work_items": []
+            "work_items": [],
         }
 
         # Currently works but with magic strings
@@ -80,9 +80,9 @@ class TestMagicStringsAndConstants:
                     "file_path": "src/feature.py",
                     "file_status": "new",
                     "description": "implement core logic",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
         architect_task = {
@@ -94,9 +94,9 @@ class TestMagicStringsAndConstants:
                     "file_path": "docs/architecture.md",
                     "file_status": "new",
                     "description": "design system architecture",
-                    "dependencies": []
+                    "dependencies": [],
                 }
-            ]
+            ],
         }
 
         # Both tasks get the same generic prompt structure
@@ -134,13 +134,29 @@ class TestMagicStringsAndConstants:
         coder_task = {
             "description": "code task",
             "mode": "coder",
-            "work_items": [{"mode": "coder", "file_path": "test.py", "file_status": "new", "description": "code", "dependencies": []}]
+            "work_items": [
+                {
+                    "mode": "coder",
+                    "file_path": "test.py",
+                    "file_status": "new",
+                    "description": "code",
+                    "dependencies": [],
+                }
+            ],
         }
 
         architect_task = {
             "description": "design task",
             "mode": "architect",
-            "work_items": [{"mode": "architect", "file_path": "design.md", "file_status": "new", "description": "design", "dependencies": []}]
+            "work_items": [
+                {
+                    "mode": "architect",
+                    "file_path": "design.md",
+                    "file_status": "new",
+                    "description": "design",
+                    "dependencies": [],
+                }
+            ],
         }
 
         coder_prompt = coder_executor.build_prompt(coder_task, "{}")

@@ -58,7 +58,7 @@ class LoggingProviderWrapper:
             f"Length: {len(prompt)} characters\n"
             f"Temperature: {kwargs.get('temperature', 0.1)}\n"
             f"{'─'*80}\n"
-            f"{prompt}"
+            f"{prompt}",
         )
 
         # Call the actual provider
@@ -72,7 +72,7 @@ class LoggingProviderWrapper:
             f"Length: {len(response)} characters\n"
             f"Time: {elapsed:.2f}s\n"
             f"{'─'*80}\n"
-            f"{response}"
+            f"{response}",
         )
 
         return response

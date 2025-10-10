@@ -126,7 +126,9 @@ class ExecutorRegistry:
             # Default search paths
             search_paths = [
                 str(Path(__file__).parent.parent),  # vivek/llm/plugins/
-                str(Path(__file__).parent.parent / "languages"),  # vivek/llm/plugins/languages/
+                str(
+                    Path(__file__).parent.parent / "languages"
+                ),  # vivek/llm/plugins/languages/
             ]
 
         discovered_count = 0
@@ -158,19 +160,25 @@ class ExecutorRegistry:
 
                             # Find plugin classes in the module
                             for name, obj in inspect.getmembers(module):
-                                if (inspect.isclass(obj) and
-                                    issubclass(obj, LanguagePlugin) and
-                                    obj != LanguagePlugin):
+                                if (
+                                    inspect.isclass(obj)
+                                    and issubclass(obj, LanguagePlugin)
+                                    and obj != LanguagePlugin
+                                ):
 
                                     try:
                                         # Instantiate the plugin (no-arg constructor)
                                         plugin_instance = obj()
                                         if self.register_plugin(plugin_instance):
                                             discovered_count += 1
-                                            logger.info(f"Auto-discovered plugin: {obj.__name__}")
+                                            logger.info(
+                                                f"Auto-discovered plugin: {obj.__name__}"
+                                            )
 
                                     except Exception as e:
-                                        logger.warning(f"Failed to instantiate plugin {name}: {e}")
+                                        logger.warning(
+                                            f"Failed to instantiate plugin {name}: {e}"
+                                        )
 
                     except Exception as e:
                         logger.warning(f"Failed to import module {module_path}: {e}")
@@ -178,10 +186,14 @@ class ExecutorRegistry:
             except Exception as e:
                 logger.error(f"Error searching path {search_path}: {e}")
 
-        logger.info(f"Plugin discovery complete. Registered {discovered_count} plugins.")
+        logger.info(
+            f"Plugin discovery complete. Registered {discovered_count} plugins."
+        )
         return discovered_count
 
-    def get_plugin(self, language: str, plugin_name: Optional[str] = None) -> Optional[LanguagePlugin]:
+    def get_plugin(
+        self, language: str, plugin_name: Optional[str] = None
+    ) -> Optional[LanguagePlugin]:
         """Get a specific plugin by language and name.
 
         Args:
@@ -202,7 +214,9 @@ class ExecutorRegistry:
 
         return None
 
-    def get_plugins_for_language_mode(self, language: str, mode: str) -> List[LanguagePlugin]:
+    def get_plugins_for_language_mode(
+        self, language: str, mode: str
+    ) -> List[LanguagePlugin]:
         """Get all plugins that support a specific language-mode combination.
 
         Args:
@@ -248,8 +262,14 @@ class ExecutorRegistry:
         # implement more sophisticated selection logic (e.g., by priority, version, etc.)
         return plugins[0]
 
-    def create_executor(self, language: str, mode: str, provider: LLMProvider,
-                       plugin_name: Optional[str] = None, **kwargs) -> Optional[Any]:
+    def create_executor(
+        self,
+        language: str,
+        mode: str,
+        provider: LLMProvider,
+        plugin_name: Optional[str] = None,
+        **kwargs,
+    ) -> Optional[Any]:
         """Create an executor using the plugin system.
 
         Args:
@@ -274,7 +294,9 @@ class ExecutorRegistry:
 
         # Validate compatibility
         if not plugin.is_compatible(language, mode):
-            logger.warning(f"Plugin {plugin.name} is not compatible with {language}/{mode}")
+            logger.warning(
+                f"Plugin {plugin.name} is not compatible with {language}/{mode}"
+            )
             return None
 
         try:
@@ -331,7 +353,7 @@ class ExecutorRegistry:
             "language_mode_combinations": sum(
                 len(modes) for modes in self._language_mode_map.values()
             ),
-            "plugins": self.list_plugins()
+            "plugins": self.list_plugins(),
         }
 
 
@@ -372,8 +394,13 @@ def discover_plugins(search_paths: Optional[List[str]] = None) -> int:
     return _global_registry.discover_plugins(search_paths)
 
 
-def create_executor(language: str, mode: str, provider: LLMProvider,
-                   plugin_name: Optional[str] = None, **kwargs) -> Optional[Any]:
+def create_executor(
+    language: str,
+    mode: str,
+    provider: LLMProvider,
+    plugin_name: Optional[str] = None,
+    **kwargs,
+) -> Optional[Any]:
     """Create an executor using the global plugin registry.
 
     Args:
@@ -386,4 +413,6 @@ def create_executor(language: str, mode: str, provider: LLMProvider,
     Returns:
         Executor instance or None if no suitable plugin found
     """
-    return _global_registry.create_executor(language, mode, provider, plugin_name, **kwargs)
+    return _global_registry.create_executor(
+        language, mode, provider, plugin_name, **kwargs
+    )

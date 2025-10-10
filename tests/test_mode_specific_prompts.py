@@ -35,9 +35,9 @@ class TestModeSpecificPromptBuilding:
                         WorkItemKeys.FILE_PATH: f"test_{mode.value}.py",
                         WorkItemKeys.FILE_STATUS: TaskStatus.NEW.value,
                         WorkItemKeys.DESCRIPTION: f"Perform {mode.value} work",
-                        WorkItemKeys.DEPENDENCIES: []
+                        WorkItemKeys.DEPENDENCIES: [],
                     }
-                ]
+                ],
             }
 
         # Generate prompts for each mode
@@ -75,7 +75,10 @@ class TestModeSpecificPromptBuilding:
         assert "ARCHITECT MODE" in architect_executor.mode_prompt
 
         # But they use the same build_prompt method from BaseExecutor
-        assert coder_executor.build_prompt.__func__ == architect_executor.build_prompt.__func__
+        assert (
+            coder_executor.build_prompt.__func__
+            == architect_executor.build_prompt.__func__
+        )
 
         # This demonstrates the lack of mode-specific prompt building logic
 
@@ -87,12 +90,14 @@ class TestModeSpecificPromptBuilding:
         task_plan = {
             TaskPlanKeys.DESCRIPTION: "test task",
             TaskPlanKeys.MODE: Mode.CODER.value,
-            TaskPlanKeys.WORK_ITEMS: []
+            TaskPlanKeys.WORK_ITEMS: [],
         }
 
         # All modes use the same token limit and compression strategy
         prompt1 = executor.build_prompt(task_plan, "short context")
-        prompt2 = executor.build_prompt(task_plan, "long context that should be compressed differently")
+        prompt2 = executor.build_prompt(
+            task_plan, "long context that should be compressed differently"
+        )
 
         # Both use same compression settings regardless of mode requirements
         # This demonstrates lack of mode-specific context handling
@@ -110,9 +115,9 @@ class TestModeSpecificPromptBuilding:
                     WorkItemKeys.FILE_PATH: "test.py",
                     WorkItemKeys.FILE_STATUS: TaskStatus.NEW.value,
                     WorkItemKeys.DESCRIPTION: "implement function",
-                    WorkItemKeys.DEPENDENCIES: []
+                    WorkItemKeys.DEPENDENCIES: [],
                 }
-            ]
+            ],
         }
 
         architect_task = {
@@ -124,9 +129,9 @@ class TestModeSpecificPromptBuilding:
                     WorkItemKeys.FILE_PATH: "design.md",
                     WorkItemKeys.FILE_STATUS: TaskStatus.NEW.value,
                     WorkItemKeys.DESCRIPTION: "design architecture",
-                    WorkItemKeys.DEPENDENCIES: []
+                    WorkItemKeys.DEPENDENCIES: [],
                 }
-            ]
+            ],
         }
 
         coder_prompt = executor.build_prompt(coder_task, "{}")

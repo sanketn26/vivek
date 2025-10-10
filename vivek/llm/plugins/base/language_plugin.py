@@ -124,8 +124,8 @@ class LanguagePlugin(ABC):
             True if the combination is supported, False otherwise
         """
         return (
-            language.lower() in self.supported_languages and
-            mode.lower() in self.supported_modes
+            language.lower() in self.supported_languages
+            and mode.lower() in self.supported_modes
         )
 
     def get_plugin_info(self) -> Dict[str, Any]:
@@ -140,7 +140,9 @@ class LanguagePlugin(ABC):
             "language": self.language,
             "supported_languages": self.supported_languages,
             "supported_modes": self.supported_modes,
-            "conventions": self.get_conventions().__dict__ if self._conventions else None
+            "conventions": (
+                self.get_conventions().__dict__ if self._conventions else None
+            ),
         }
 
     def is_compatible(self, language: str, mode: str) -> bool:

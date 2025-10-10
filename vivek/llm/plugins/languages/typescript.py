@@ -33,7 +33,12 @@ class TypeScriptLanguagePlugin(LanguagePlugin):
     @property
     def supported_modes(self) -> list[str]:
         """List of execution modes this plugin supports."""
-        return [Mode.CODER.value, Mode.ARCHITECT.value, Mode.PEER.value, Mode.SDET.value]
+        return [
+            Mode.CODER.value,
+            Mode.ARCHITECT.value,
+            Mode.PEER.value,
+            Mode.SDET.value,
+        ]
 
     @property
     def name(self) -> str:
@@ -70,12 +75,14 @@ class TypeScriptLanguagePlugin(LanguagePlugin):
                 self.mode = mode_lower
 
                 # Set language-specific prompt
-                if hasattr(base_executor, 'mode_prompt'):
+                if hasattr(base_executor, "mode_prompt"):
                     base_executor.mode_prompt = f"TypeScript {mode_lower.title()} Mode: {self._get_mode_specific_prompt(mode_lower)}"
 
             def _get_mode_specific_prompt(self, mode: str) -> str:
                 """Get TypeScript-specific prompt for the mode."""
-                mode_instructions = self.language_plugin.get_language_specific_instructions(mode)
+                mode_instructions = (
+                    self.language_plugin.get_language_specific_instructions(mode)
+                )
                 return f"Follow TypeScript best practices. {mode_instructions}"
 
             def __getattr__(self, name):
@@ -113,37 +120,48 @@ Follow TypeScript conventions:
         mode_lower = mode.lower()
 
         if mode_lower == Mode.CODER.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Coding Requirements:**
 - Use explicit type annotations for function parameters and return values
 - Implement proper error handling with typed errors
 - Use generic types for reusable components and utilities
 - Follow the single responsibility principle
 - Write unit tests for all functions"""
+            )
         elif mode_lower == Mode.ARCHITECT.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Architecture Requirements:**
 - Design type-safe APIs and data contracts
 - Consider module boundaries and dependency injection
 - Plan for scalability with proper abstractions
 - Document API interfaces and integration patterns
 - Consider deployment and build strategies"""
+            )
         elif mode_lower == Mode.PEER.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Code Review Requirements:**
 - Check for type safety and proper TypeScript usage
 - Verify proper error handling and edge cases
 - Ensure comprehensive JSDoc coverage
 - Review for security vulnerabilities (input validation, XSS prevention)
 - Check for appropriate testing coverage"""
+            )
         elif mode_lower == Mode.SDET.value:
-            return base_instructions + """
+            return (
+                base_instructions
+                + """
 **Testing Requirements:**
 - Write comprehensive unit tests using Jest or similar framework
 - Include integration and end-to-end tests
 - Test edge cases and error conditions with proper mocking
 - Use type-safe test utilities and fixtures
 - Aim for >80% test coverage"""
+            )
         else:
             return base_instructions
-

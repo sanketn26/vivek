@@ -53,15 +53,15 @@ def sample_task_plan() -> Dict[str, Any]:
                 "file_path": "tests/test_orchestrator.py",
                 "file_status": "new",
                 "description": "Create unit tests for langgraph_orchestrator.py with pytest",
-                "dependencies": []
+                "dependencies": [],
             },
             {
                 "mode": "sdet",
                 "file_path": "tests/test_models.py",
                 "file_status": "existing",
                 "description": "Add additional test cases for models.py",
-                "dependencies": []
-            }
+                "dependencies": [],
+            },
         ],
         "priority": "normal",
     }

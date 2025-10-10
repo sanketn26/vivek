@@ -80,7 +80,9 @@ class VivekState(TypedDict):
     status: NotRequired[str]  # "paused", "running", etc.
 
 
-def initialize_state(user_input: str, context: Optional[Dict[str, Any]] = None) -> VivekState:
+def initialize_state(
+    user_input: str, context: Optional[Dict[str, Any]] = None
+) -> VivekState:
     """
     Initialize a new state for processing a user request.
 

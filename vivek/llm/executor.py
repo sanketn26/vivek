@@ -94,7 +94,9 @@ class BaseExecutor:
     def build_prompt(self, task_plan: Dict[str, Any], context: str) -> str:
         # Compress context using mode-specific strategy
         compressed_context = PromptCompressor.truncate_context(
-            context, self.get_max_context_tokens(), strategy=self.get_context_compression_strategy()
+            context,
+            self.get_max_context_tokens(),
+            strategy=self.get_context_compression_strategy(),
         )
 
         # Get work items from task plan
@@ -103,7 +105,11 @@ class BaseExecutor:
         # Build work items summary
         work_items_summary = []
         for i, item in enumerate(work_items, 1):
-            status = OutputFormatMarkers.NEW_MARKER if item.get(WorkItemKeys.FILE_STATUS) == TaskStatus.NEW.value else OutputFormatMarkers.MODIFY_MARKER
+            status = (
+                OutputFormatMarkers.NEW_MARKER
+                if item.get(WorkItemKeys.FILE_STATUS) == TaskStatus.NEW.value
+                else OutputFormatMarkers.MODIFY_MARKER
+            )
             file_path = item.get(WorkItemKeys.FILE_PATH, "")
             desc = item.get(WorkItemKeys.DESCRIPTION, "")
             deps = item.get(WorkItemKeys.DEPENDENCIES, [])
@@ -114,8 +120,11 @@ class BaseExecutor:
                 f"Task: {desc}{deps_str}"
             )
 
-        work_items_str = "\n".join(work_items_summary) if work_items_summary else \
-                          "No specific work items defined"
+        work_items_str = (
+            "\n".join(work_items_summary)
+            if work_items_summary
+            else "No specific work items defined"
+        )
 
         # Get mode-specific components
         mode_instruction = self.mode_prompt or f"Mode: {self.mode}"
@@ -124,7 +133,11 @@ class BaseExecutor:
         output_format = self.get_mode_specific_output_format()
 
         # Combine all components
-        instruction_section = f"{mode_instruction}\n\n{mode_specific_instructions}" if mode_specific_instructions else mode_instruction
+        instruction_section = (
+            f"{mode_instruction}\n\n{mode_specific_instructions}"
+            if mode_specific_instructions
+            else mode_instruction
+        )
 
         prompt = f"""{instruction_section}
 
@@ -162,7 +175,7 @@ Begin execution:"""
                 return clarification_needed(
                     questions=clarification_check["questions"],
                     from_node=f"executor_{self.mode}",
-                    **clarification_check.get("metadata", {})
+                    **clarification_check.get("metadata", {}),
                 )
 
             # Execute implementation
@@ -174,9 +187,7 @@ Begin execution:"""
 
             # Return execution_complete message
             return execution_complete(
-                output=output,
-                from_node=f"executor_{self.mode}",
-                **metadata
+                output=output, from_node=f"executor_{self.mode}", **metadata
             )
 
         except Exception as e:
@@ -185,11 +196,12 @@ Begin execution:"""
                 error=str(e),
                 from_node=f"executor_{self.mode}",
                 task_plan=task_plan.get(TaskPlanKeys.DESCRIPTION, "unknown"),
-                mode=self.mode
+                mode=self.mode,
             )
 
-    def _check_for_ambiguities(self, task_plan: Dict[str, Any], context: str) \
-            -> Optional[Dict[str, Any]]:
+    def _check_for_ambiguities(
+        self, task_plan: Dict[str, Any], context: str
+    ) -> Optional[Dict[str, Any]]:
         """Check if clarification needed before execution.
 
         Override in subclasses for mode-specific ambiguity detection.
@@ -201,7 +213,9 @@ Begin execution:"""
         # Subclasses can override for specific checks
         return None
 
-    def _extract_metadata(self, output: str, task_plan: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_metadata(
+        self, output: str, task_plan: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Extract metadata from executor output.
 
         Returns:
@@ -215,7 +229,9 @@ Begin execution:"""
         }
 
 
-def get_executor(mode: str, provider: LLMProvider, language: Optional[str] = None) -> BaseExecutor:
+def get_executor(
+    mode: str, provider: LLMProvider, language: Optional[str] = None
+) -> BaseExecutor:
     """Factory to return a mode and language-specific executor.
 
     Uses plugin system for dynamic language support with fallback to
@@ -241,7 +257,9 @@ def get_executor(mode: str, provider: LLMProvider, language: Optional[str] = Non
     # Try plugin system first for dynamic language support
     try:
         # Import here to avoid circular imports at module level
-        from vivek.llm.plugins.base.registry import create_executor as create_plugin_executor
+        from vivek.llm.plugins.base.registry import (
+            create_executor as create_plugin_executor,
+        )
 
         plugin_executor = create_plugin_executor(language, mode, provider)
         if plugin_executor is not None:
@@ -264,7 +282,9 @@ def get_executor(mode: str, provider: LLMProvider, language: Optional[str] = Non
         Mode.SDET.value: ("vivek.llm.sdet_executor", "SDETExecutor"),
     }
 
-    module_name, class_name = _MODE_EXECUTOR_MAPPING.get(mode, ("vivek.llm.coder_executor", "CoderExecutor"))
+    module_name, class_name = _MODE_EXECUTOR_MAPPING.get(
+        mode, ("vivek.llm.coder_executor", "CoderExecutor")
+    )
 
     try:
         mod = importlib.import_module(module_name)

@@ -8,7 +8,12 @@ from unittest.mock import Mock, patch, MagicMock
 
 from vivek.llm.executor import BaseExecutor
 from vivek.llm.planner import PlannerModel
-from vivek.llm.provider import OllamaProvider, OpenAICompatibleProvider, LMStudioProvider, SarvamAIProvider
+from vivek.llm.provider import (
+    OllamaProvider,
+    OpenAICompatibleProvider,
+    LMStudioProvider,
+    SarvamAIProvider,
+)
 from vivek.llm.models import LLMProvider
 from vivek.llm.constants import PromptSections
 
@@ -110,7 +115,7 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         assert provider.model_name == "gpt-3.5-turbo"
@@ -122,8 +127,7 @@ class TestOpenAICompatibleProvider:
         monkeypatch.setenv("OPENAI_API_KEY", "env-api-key")
 
         provider = OpenAICompatibleProvider(
-            model_name="gpt-4",
-            base_url="https://api.openai.com"
+            model_name="gpt-4", base_url="https://api.openai.com"
         )
 
         assert provider.api_key == "env-api-key"
@@ -131,8 +135,7 @@ class TestOpenAICompatibleProvider:
     def test_openai_provider_initialization_no_api_key(self):
         """Test initialization without API key."""
         provider = OpenAICompatibleProvider(
-            model_name="gpt-3.5-turbo",
-            base_url="https://api.openai.com"
+            model_name="gpt-3.5-turbo", base_url="https://api.openai.com"
         )
 
         assert provider.api_key is None
@@ -142,7 +145,7 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         with patch("requests.post") as mock_post:
@@ -180,7 +183,7 @@ class TestOpenAICompatibleProvider:
             model_name="gpt-4",
             base_url="https://api.openai.com",
             api_key="test-key",
-            system_prompt="You are a helpful assistant."
+            system_prompt="You are a helpful assistant.",
         )
 
         with patch("requests.post") as mock_post:
@@ -208,7 +211,7 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         with patch("requests.post") as mock_post:
@@ -220,10 +223,7 @@ class TestOpenAICompatibleProvider:
             mock_post.return_value = mock_response
 
             response = provider.generate(
-                "Test prompt",
-                temperature=0.5,
-                top_p=0.8,
-                max_tokens=1000
+                "Test prompt", temperature=0.5, top_p=0.8, max_tokens=1000
             )
 
             # Check that options were passed correctly
@@ -238,11 +238,12 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         with patch("requests.post") as mock_post:
             from requests.exceptions import RequestException
+
             mock_post.side_effect = RequestException("Connection failed")
 
             response = provider.generate("Test prompt")
@@ -255,7 +256,7 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         with patch("requests.post") as mock_post:
@@ -272,7 +273,7 @@ class TestOpenAICompatibleProvider:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
         )
 
         with patch("requests.post") as mock_post:
@@ -300,8 +301,7 @@ class TestLMStudioProvider:
     def test_lmstudio_provider_initialization_custom_url(self):
         """Test LMStudioProvider with custom URL."""
         provider = LMStudioProvider(
-            model_name="custom-model",
-            base_url="http://192.168.1.100:8080"
+            model_name="custom-model", base_url="http://192.168.1.100:8080"
         )
 
         assert provider.model_name == "custom-model"
@@ -383,8 +383,7 @@ class TestSarvamAIProvider:
     def test_sarvam_provider_generate_with_system_prompt(self):
         """Test generation with system prompt."""
         provider = SarvamAIProvider(
-            api_key="test-key",
-            system_prompt="You are a helpful assistant."
+            api_key="test-key", system_prompt="You are a helpful assistant."
         )
 
         with patch("requests.post") as mock_post:
@@ -413,6 +412,7 @@ class TestSarvamAIProvider:
 
         with patch("requests.post") as mock_post:
             from requests.exceptions import RequestException
+
             mock_post.side_effect = RequestException("Connection failed")
 
             response = provider.generate("Test prompt")
@@ -444,7 +444,7 @@ class TestSystemPromptFunctionality:
             model_name="gpt-4",
             base_url="https://api.openai.com",
             api_key="test-key",
-            system_prompt="You are a senior software engineer with expertise in Python."
+            system_prompt="You are a senior software engineer with expertise in Python.",
         )
 
         with patch("requests.post") as mock_post:
@@ -458,7 +458,7 @@ class TestSystemPromptFunctionality:
             response = provider.generate(
                 "Review this code and suggest improvements.",
                 temperature=0.3,
-                max_tokens=500
+                max_tokens=500,
             )
 
             # Verify system prompt is included with other parameters
@@ -480,7 +480,7 @@ class TestSystemPromptFunctionality:
         """Test system prompt integration with SarvamAI provider."""
         provider = SarvamAIProvider(
             api_key="test-key",
-            system_prompt="You are a helpful coding assistant specializing in web development."
+            system_prompt="You are a helpful coding assistant specializing in web development.",
         )
 
         with patch("requests.post") as mock_post:
@@ -509,7 +509,7 @@ class TestSystemPromptFunctionality:
         provider = OpenAICompatibleProvider(
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
-            api_key="test-key"
+            api_key="test-key",
             # No system_prompt provided
         )
 
@@ -538,7 +538,7 @@ class TestSystemPromptFunctionality:
             model_name="gpt-4",
             base_url="https://api.openai.com",
             api_key="test-key",
-            system_prompt="You are a helpful assistant."
+            system_prompt="You are a helpful assistant.",
         )
 
         # The generate method should handle token counting for the full prompt
@@ -562,14 +562,16 @@ class TestSystemPromptFunctionality:
             model_name="gpt-3.5-turbo",
             base_url="https://api.openai.com",
             api_key="test-key",
-            system_prompt=""  # Empty system prompt
+            system_prompt="",  # Empty system prompt
         )
 
         with patch("requests.post") as mock_post:
             mock_response = Mock()
             mock_response.raise_for_status.return_value = None
             mock_response.json.return_value = {
-                "choices": [{"message": {"content": "Response with empty system prompt"}}]
+                "choices": [
+                    {"message": {"content": "Response with empty system prompt"}}
+                ]
             }
             mock_post.return_value = mock_response
 
@@ -593,7 +595,7 @@ class TestProviderIntegration:
             OllamaProvider("test-model"),
             OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com"),
             LMStudioProvider("local-model"),
-            SarvamAIProvider(api_key="test-key")
+            SarvamAIProvider(api_key="test-key"),
         ]
 
         for provider in providers:
@@ -608,9 +610,12 @@ class TestProviderIntegration:
         """Test that all providers handle errors consistently."""
         providers = [
             ("OllamaProvider", OllamaProvider("test-model")),
-            ("OpenAICompatibleProvider", OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com")),
+            (
+                "OpenAICompatibleProvider",
+                OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com"),
+            ),
             ("LMStudioProvider", LMStudioProvider("local-model")),
-            ("SarvamAIProvider", SarvamAIProvider(api_key="test-key"))
+            ("SarvamAIProvider", SarvamAIProvider(api_key="test-key")),
         ]
 
         for provider_name, provider in providers:
@@ -623,12 +628,16 @@ class TestProviderIntegration:
     def test_system_prompt_backward_compatibility(self):
         """Test that existing code without system prompts still works."""
         # Test providers that previously didn't support system prompts
-        openai_provider = OpenAICompatibleProvider("gpt-3.5-turbo", "https://api.openai.com")
+        openai_provider = OpenAICompatibleProvider(
+            "gpt-3.5-turbo", "https://api.openai.com"
+        )
 
         with patch("requests.post") as mock_post:
             mock_response = Mock()
             mock_response.raise_for_status.return_value = None
-            mock_response.json.return_value = {"choices": [{"message": {"content": "OK"}}]}
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "OK"}}]
+            }
             mock_post.return_value = mock_response
 
             # Should work without system prompt
@@ -669,7 +678,7 @@ class TestPlannerModel:
                         "file_path": "tests/test_file.py",
                         "file_status": "new",
                         "description": "Create unit tests with pytest",
-                        "dependencies": []
+                        "dependencies": [],
                     }
                 ],
                 "priority": "high",
@@ -703,7 +712,10 @@ class TestPlannerModel:
         assert task_plan["mode"] == "coder"
         assert "work_items" in task_plan
         assert len(task_plan["work_items"]) == 1
-        assert task_plan["work_items"][0]["description"] == "Implement the requested functionality"
+        assert (
+            task_plan["work_items"][0]["description"]
+            == "Implement the requested functionality"
+        )
         assert task_plan["priority"] == "normal"
 
     def test_analyze_request_partial_json(self, planner_model):

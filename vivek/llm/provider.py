@@ -45,10 +45,16 @@ class OllamaProvider(LLMProvider):
 class OpenAICompatibleProvider(LLMProvider):
     """Provider for OpenAI compatible APIs."""
 
-    def __init__(self, model_name: str, base_url: str, api_key: Optional[str] = None, system_prompt: Optional[str] = None):
+    def __init__(
+        self,
+        model_name: str,
+        base_url: str,
+        api_key: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+    ):
         self.model_name = model_name
-        self.base_url = base_url.rstrip('/')
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.system_prompt = system_prompt
 
     def generate(self, prompt: str, **kwargs) -> str:
@@ -66,36 +72,36 @@ class OpenAICompatibleProvider(LLMProvider):
 
         try:
             headers = {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             }
             if self.api_key:
-                headers['Authorization'] = f'Bearer {self.api_key}'
+                headers["Authorization"] = f"Bearer {self.api_key}"
 
             # Build messages array with system prompt support
             messages = []
             if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-            messages.append({'role': 'user', 'content': validated_prompt})
+                messages.append({"role": "system", "content": self.system_prompt})
+            messages.append({"role": "user", "content": validated_prompt})
 
             data = {
-                'model': self.model_name,
-                'messages': messages,
-                'temperature': kwargs.get('temperature', 0.1),
-                'top_p': kwargs.get('top_p', 0.9),
-                'max_tokens': kwargs.get('max_tokens', 2048),
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.1),
+                "top_p": kwargs.get("top_p", 0.9),
+                "max_tokens": kwargs.get("max_tokens", 2048),
             }
 
             response = requests.post(
-                f'{self.base_url}/v1/chat/completions',
+                f"{self.base_url}/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=120  # Increased timeout for thinking models
+                timeout=120,  # Increased timeout for thinking models
             )
             response.raise_for_status()
 
             result = response.json()
-            if 'choices' in result and len(result['choices']) > 0:
-                return result['choices'][0]['message']['content']
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"]
             else:
                 return f"Error: Unexpected response format: {result}"
 
@@ -116,9 +122,14 @@ class LMStudioProvider(OpenAICompatibleProvider):
 class SarvamAIProvider(LLMProvider):
     """Provider for Sarvam AI M model."""
 
-    def __init__(self, model_name: str = "sarvam-m", api_key: Optional[str] = None, system_prompt: Optional[str] = None):
+    def __init__(
+        self,
+        model_name: str = "sarvam-m",
+        api_key: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+    ):
         self.model_name = model_name
-        self.api_key = api_key or os.getenv('SARVAM_API_KEY')
+        self.api_key = api_key or os.getenv("SARVAM_API_KEY")
         self.base_url = "https://api.sarvam.ai"
         self.system_prompt = system_prompt
 
@@ -137,36 +148,36 @@ class SarvamAIProvider(LLMProvider):
 
         try:
             headers = {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             }
             if self.api_key:
-                headers['api-key'] = self.api_key
+                headers["api-key"] = self.api_key
 
             # Build messages array with system prompt support
             messages = []
             if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-            messages.append({'role': 'user', 'content': validated_prompt})
+                messages.append({"role": "system", "content": self.system_prompt})
+            messages.append({"role": "user", "content": validated_prompt})
 
             data = {
-                'model': self.model_name,
-                'messages': messages,
-                'temperature': kwargs.get('temperature', 0.1),
-                'top_p': kwargs.get('top_p', 0.9),
-                'max_tokens': kwargs.get('max_tokens', 2048),
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.1),
+                "top_p": kwargs.get("top_p", 0.9),
+                "max_tokens": kwargs.get("max_tokens", 2048),
             }
 
             response = requests.post(
-                f'{self.base_url}/v1/chat/completions',
+                f"{self.base_url}/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=120  # Increased timeout for thinking models
+                timeout=120,  # Increased timeout for thinking models
             )
             response.raise_for_status()
 
             result = response.json()
-            if 'choices' in result and len(result['choices']) > 0:
-                return result['choices'][0]['message']['content']
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"]
             else:
                 return f"Error: Unexpected response format: {result}"
 
@@ -181,7 +192,7 @@ def get_provider(
     model_name: str,
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    **kwargs
+    **kwargs,
 ) -> LLMProvider:
     """
     Factory function to create the appropriate provider based on type.
@@ -206,41 +217,35 @@ def get_provider(
 
     elif provider_type == "lmstudio":
         return LMStudioProvider(
-            model_name=model_name,
-            base_url=base_url or "http://localhost:1234"
+            model_name=model_name, base_url=base_url or "http://localhost:1234"
         )
 
     elif provider_type == "openai":
         return OpenAICompatibleProvider(
             model_name=model_name,
             base_url=base_url or "https://api.openai.com/v1",
-            api_key=api_key or os.getenv('OPENAI_API_KEY'),
-            **kwargs
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            **kwargs,
         )
 
     elif provider_type == "anthropic":
         return OpenAICompatibleProvider(
             model_name=model_name,
             base_url=base_url or "https://api.anthropic.com/v1",
-            api_key=api_key or os.getenv('ANTHROPIC_API_KEY'),
-            **kwargs
+            api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
+            **kwargs,
         )
 
     elif provider_type == "sarvam":
         return SarvamAIProvider(
-            model_name=model_name or "sarvam-m",
-            api_key=api_key,
-            **kwargs
+            model_name=model_name or "sarvam-m", api_key=api_key, **kwargs
         )
 
     elif provider_type == "openai-compatible":
         if not base_url:
             raise ValueError("base_url required for openai-compatible provider")
         return OpenAICompatibleProvider(
-            model_name=model_name,
-            base_url=base_url,
-            api_key=api_key,
-            **kwargs
+            model_name=model_name, base_url=base_url, api_key=api_key, **kwargs
         )
 
     else:
