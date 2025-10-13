@@ -28,7 +28,6 @@ class TestWorkflowIntegrationManager:
         assert manager.use_structured == True
         assert manager.structured_workflow is not None
         assert manager.structured_planner is not None
-        assert manager.context_manager is not None
         assert manager.legacy_planner is not None
 
     def test_initialization_legacy_mode(self):
@@ -38,7 +37,6 @@ class TestWorkflowIntegrationManager:
         assert manager.use_structured == False
         assert manager.structured_workflow is None
         assert manager.structured_planner is None
-        assert manager.context_manager is None
         assert manager.legacy_planner is not None
 
     def test_get_planner_structured_mode(self):
@@ -119,19 +117,7 @@ class TestWorkflowCompatibilityLayer:
         # Should have called structured planner
         self.integration_manager.structured_planner.analyze_request.assert_called_once()
 
-    def test_context_enhancement(self):
-        """Test context enhancement with workflow information"""
-        context = '{"existing": "data"}'
-        enhanced_context = self.compatibility_layer._enhance_context_with_workflow(
-            context
-        )
 
-        # Should return enhanced context or original if enhancement fails
-        assert enhanced_context is not None
-
-        # If enhancement worked, should be different from original
-        # (This is a basic check - actual enhancement depends on implementation)
-        assert isinstance(enhanced_context, str)
 
 
 class TestWorkflowRecommendations:
@@ -190,7 +176,6 @@ class TestIntegrationScenarios:
 
         # Test that all components are properly initialized
         assert manager.structured_workflow is not None
-        assert manager.context_manager is not None
         assert manager.performance_validator is not None
 
         # Test planner retrieval

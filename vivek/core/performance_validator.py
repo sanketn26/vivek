@@ -21,7 +21,6 @@ except ImportError:
             return len(text) // 4  # Rough approximation
 
 
-from vivek.core.context_condensation import ProgressiveContextManager, ContextType
 from vivek.core.structured_workflow import StructuredWorkflow
 
 
@@ -168,61 +167,7 @@ class PerformanceValidator:
                     error_message=str(e),
                 )
 
-    def validate_context_condensation(
-        self, context_manager: ProgressiveContextManager
-    ) -> BenchmarkResult:
-        """Validate context condensation performance"""
-        model_name = "qwen2.5-coder:7b"
 
-        with self.measure_performance("Context Condensation") as metrics:
-            try:
-                # Add test context items
-                for i in range(50):
-                    context_manager.add_context_item(
-                        content=f"Test context item {i}",
-                        context_type=ContextType.ACTION,  # Use a valid ContextType enum value
-                        importance=0.5,
-                        source="test",
-                    )
-
-                # Test different condensation strategies
-                strategies = ["recent", "important", "balanced", "comprehensive"]
-                total_tokens = 0
-
-                for strategy in strategies:
-                    condensed = context_manager.get_condensed_context(strategy)
-                    total_tokens += sum(
-                        len(item) // 4 for item in condensed.short_term_memory
-                    )
-                    total_tokens += sum(
-                        len(item) // 4 for item in condensed.medium_term_memory
-                    )
-
-                metrics = PerformanceMetrics(
-                    execution_time=time.time() - time.time(),  # Set by context manager
-                    token_count=total_tokens,
-                    context_layers_used=len(context_manager.layers),
-                    workflow_phases=1,
-                    memory_usage_mb=30,
-                )
-
-                return BenchmarkResult(
-                    model_name=model_name,
-                    test_scenario="context_condensation",
-                    metrics=metrics,
-                    timestamp=time.time(),
-                    success=True,
-                )
-
-            except Exception as e:
-                return BenchmarkResult(
-                    model_name=model_name,
-                    test_scenario="context_condensation_error",
-                    metrics=PerformanceMetrics(0.1, 0, 0, 0, 0),
-                    timestamp=time.time(),
-                    success=False,
-                    error_message=str(e),
-                )
 
     def optimize_for_model_size(self, model_size_gb: float) -> Dict[str, Any]:
         """Optimize configuration for specific model size"""
@@ -349,26 +294,6 @@ class PerformanceOptimizer:
         self.optimization_cache[cache_key] = optimized_workflow
         return optimized_workflow
 
-    def optimize_context_for_model(
-        self, model_name: str, context_manager: ProgressiveContextManager
-    ) -> ProgressiveContextManager:
-        """Optimize context management for specific model"""
-        cache_key = f"context_opt_{model_name}"
-
-        if cache_key in self.optimization_cache:
-            return self.optimization_cache[cache_key]
-
-        model_size = self._estimate_model_size(model_name)
-        optimized_config = self.validator.optimize_for_model_size(model_size)
-
-        # Apply context optimizations
-        optimized_manager = self._apply_context_optimizations(
-            context_manager, optimized_config
-        )
-
-        self.optimization_cache[cache_key] = optimized_manager
-        return optimized_manager
-
     def _estimate_model_size(self, model_name: str) -> float:
         """Estimate model size in GB based on name"""
         size_map = {
@@ -400,16 +325,6 @@ class PerformanceOptimizer:
             # Could add logic to skip certain phases for small models
 
         return workflow
-
-    def _apply_context_optimizations(
-        self, context_manager: ProgressiveContextManager, config: Dict[str, Any]
-    ) -> ProgressiveContextManager:
-        """Apply context optimizations based on configuration"""
-        # Update context manager configuration
-        if "total_budget" in config:
-            context_manager.total_budget = config["total_budget"]
-
-        return context_manager
 
     def get_optimization_recommendations(self) -> List[str]:
         """Get optimization recommendations based on benchmarks"""
