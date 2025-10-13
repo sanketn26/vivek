@@ -31,7 +31,10 @@ help: ## Show this help message
 venv: ## Create virtual environment
 	@echo "🏗️  Creating virtual environment..."
 	@# Try to find Python 3.10+ in order of preference
-	@if command -v python3.12 >/dev/null 2>&1; then \
+	@if command -v python3.13 >/dev/null 2>&1; then \
+		echo "Using python3.13"; \
+		python3.13 -m venv venv; \
+	elif command -v python3.12 >/dev/null 2>&1; then \
 		echo "Using python3.12"; \
 		python3.12 -m venv venv; \
 	elif command -v python3.11 >/dev/null 2>&1; then \

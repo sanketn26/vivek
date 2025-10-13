@@ -83,11 +83,12 @@ class EmbeddingModel:
         )
 
         # Cache if enabled
-        if use_cache:
+        if use_cache and self.cache_size > 0:
             # Implement simple cache size limit
             if len(self._embedding_cache) >= self.cache_size:
                 # Remove oldest entry (simple FIFO)
-                self._embedding_cache.pop(next(iter(self._embedding_cache)))
+                first_key = next(iter(self._embedding_cache))
+                self._embedding_cache.pop(first_key)
             self._embedding_cache[cache_key] = embedding
 
         return embedding
@@ -127,10 +128,11 @@ class EmbeddingModel:
                 uncached_indices, batch_embeddings, uncached_texts
             ):
                 embeddings[idx] = emb
-                if use_cache:
+                if use_cache and self.cache_size > 0:
                     cache_key = self._get_cache_key(text)
                     if len(self._embedding_cache) >= self.cache_size:
-                        self._embedding_cache.pop(next(iter(self._embedding_cache)))
+                        first_key = next(iter(self._embedding_cache))
+                        self._embedding_cache.pop(first_key)
                     self._embedding_cache[cache_key] = emb
 
         return embeddings

@@ -357,23 +357,24 @@ class TestTokenCounting:
             ],
         }
 
-    def test_prompt_token_counting(self, mock_provider, sample_task_plan, caplog):
+    def test_prompt_token_counting(self, mock_provider, sample_task_plan):
         """Test that executor logs token count.
 
-        This test will FAIL (RED) initially - token counting not implemented.
-        After implementation, it will pass (GREEN).
+        This test verifies that the executor properly calls the token counting utility.
+        We test this by verifying the function is called rather than checking logs,
+        which can be affected by test isolation issues.
         """
-        import logging
+        with patch('vivek.llm.executor.log_token_count') as mock_log_token_count:
+            mock_log_token_count.return_value = 100  # Mock return value
 
-        caplog.set_level(logging.INFO)
+            executor = get_executor(Mode.CODER.value, mock_provider, "python")
+            prompt = executor.build_prompt(sample_task_plan, context="Test context")
 
-        executor = get_executor(Mode.CODER.value, mock_provider, "python")
-        prompt = executor.build_prompt(sample_task_plan, context="Test context")
-
-        # Check that token count was logged
-        assert any(
-            "token" in record.message.lower() for record in caplog.records
-        ), "Executor should log token count when building prompt"
+            # Verify log_token_count was called
+            assert mock_log_token_count.called, "Executor should call log_token_count when building prompt"
+            # Verify it was called with the prompt
+            call_args = mock_log_token_count.call_args
+            assert call_args[0][0] == prompt, "log_token_count should be called with the generated prompt"
 
 
 class TestPluginPerformance:

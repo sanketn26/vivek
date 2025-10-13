@@ -134,7 +134,9 @@ class TestTagBasedRetriever:
         results = retriever.retrieve(["api"], "test query", 5)
 
         assert len(results) == 1
-        assert results[0]["matched_tags"] == ["api"]
+        # Tag normalizer expands "api" to include its synonyms
+        # Check that "api" is in the matched tags
+        assert "api" in results[0]["matched_tags"]
         assert results[0]["score"] > 0
 
     def test_retrieval_no_matches(self):
