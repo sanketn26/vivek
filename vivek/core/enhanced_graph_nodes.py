@@ -104,7 +104,7 @@ def create_enhanced_planner_node(
                     ),
                     "workflow_phases": ["understand", "decompose", "detail", "taskify"],
                     "context_management": {
-                        "strategy": "progressive_condensation",
+                        "strategy": "agentic_context",
                         "context_layers": [
                             "immediate",
                             "short_term",

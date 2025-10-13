@@ -16,7 +16,6 @@ from vivek.llm.executor import BaseExecutor
 from vivek.llm.structured_executor import StructuredExecutor
 from vivek.core.structured_workflow import StructuredWorkflow
 from vivek.core.prompt_templates import StructuredPromptBuilder
-from vivek.core.context_condensation import ProgressiveContextManager
 from vivek.core.enhanced_graph_nodes import (
     create_enhanced_planner_node,
     create_enhanced_executor_node,
@@ -45,7 +44,6 @@ class WorkflowIntegrationManager:
         if use_structured:
             self.structured_workflow = StructuredWorkflow()
             self.prompt_builder = StructuredPromptBuilder()
-            self.context_manager = ProgressiveContextManager()
             self.performance_validator = PerformanceValidator()
             self.performance_optimizer = PerformanceOptimizer(
                 self.performance_validator
@@ -56,7 +54,6 @@ class WorkflowIntegrationManager:
         else:
             self.structured_workflow = None
             self.prompt_builder = None
-            self.context_manager = None
             self.performance_validator = None
             self.performance_optimizer = None
             self.structured_planner = None
@@ -126,15 +123,6 @@ class WorkflowIntegrationManager:
             )
             benchmarks.append(workflow_benchmark)
 
-        # Benchmark context condensation
-        if self.performance_validator and self.context_manager:
-            context_benchmark = (
-                self.performance_validator.validate_context_condensation(
-                    self.context_manager
-                )
-            )
-            benchmarks.append(context_benchmark)
-
         # Generate report
         if self.performance_validator:
             return self.performance_validator.generate_performance_report()
@@ -197,16 +185,8 @@ class WorkflowCompatibilityLayer:
         """Analyze request with automatic workflow selection"""
         planner = self.integration_manager.get_planner()
 
-        # Add context management if structured workflow is enabled
-        if (
-            self.integration_manager.use_structured
-            and self.integration_manager.context_manager
-        ):
-            # Enhance context with structured workflow context
-            enhanced_context = self._enhance_context_with_workflow(context)
-            return planner.analyze_request(user_input, enhanced_context)
-        else:
-            return planner.analyze_request(user_input, context)
+        # Use structured workflow if enabled
+        return planner.analyze_request(user_input, context)
 
     def execute_enhanced_task(
         self, task_plan: Dict[str, Any], context: str, mode: str
@@ -216,15 +196,8 @@ class WorkflowCompatibilityLayer:
             mode, self.integration_manager.provider
         )
 
-        # Add workflow context if structured
-        if (
-            self.integration_manager.use_structured
-            and self.integration_manager.context_manager
-        ):
-            enhanced_context = self._enhance_context_with_workflow(context)
-            return executor.execute_task(task_plan, enhanced_context)
-        else:
-            return executor.execute_task(task_plan, context)
+        # Execute with provided context
+        return executor.execute_task(task_plan, context)
 
     def execute_task(
         self, task_plan: Dict[str, Any], context: str, mode: str
@@ -249,48 +222,7 @@ class WorkflowCompatibilityLayer:
 
         return planner.review_output(task_description, executor_output)
 
-    def _enhance_context_with_workflow(self, context: str) -> str:
-        """Enhance context with structured workflow information"""
-        if (
-            not self.integration_manager.use_structured
-            or not self.integration_manager.context_manager
-        ):
-            return context
 
-        try:
-            # Add workflow context summary
-            context_summary = (
-                self.integration_manager.context_manager.get_condensed_context(
-                    "balanced"
-                )
-            )
-
-            workflow_context = {
-                "structured_workflow_enabled": True,
-                "context_layers": len(self.integration_manager.context_manager.layers),
-                "compression_strategy": context_summary.compression_strategy,
-                "recent_memory_count": len(context_summary.short_term_memory),
-                "medium_memory_count": len(context_summary.medium_term_memory),
-            }
-
-            # Merge with existing context
-            if isinstance(context, str):
-                try:
-                    context_data = json.loads(context)
-                except json.JSONDecodeError:
-                    context_data = {"original_context": context}
-
-                if isinstance(context_data, dict):
-                    context_data["workflow_context"] = json.dumps(workflow_context)
-                    return json.dumps(context_data, indent=2)
-                else:
-                    return context
-            else:
-                # Context is already a dict-like object, return as string
-                return json.dumps(context, indent=2) if context else "{}"
-        except Exception:
-            # If anything fails, return original context
-            return context
 
 
 def create_enhanced_orchestrator(
@@ -351,7 +283,6 @@ def get_workflow_recommendations(
         "confidence": 0.8,
         "reasoning": "Structured workflow provides better task decomposition and quality",
         "optimizations": [
-            "Enable context condensation for complex tasks",
             "Use multiple perspectives for architectural decisions",
             "Apply TDD patterns for implementation tasks",
         ],

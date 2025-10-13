@@ -66,7 +66,7 @@ class TaskDefinition:
 
 @dataclass
 class ContextSummary:
-    """Progressive context condensation with metadata"""
+    """Context summary with metadata for agentic context management"""
 
     session_id: str
     timestamp: str
@@ -309,9 +309,9 @@ class StructuredWorkflow:
         return f"suggested_path_for_{activity_name}_{task_type}.py"
 
     def condense_context(
-        self, current_context: str, strategy: str = "progressive"
+        self, current_context: str, strategy: str = "agentic"
     ) -> ContextSummary:
-        """Create progressive context condensation"""
+        """Create context summary for agentic context management"""
         # Implementation would condense context based on strategy
         return ContextSummary(
             session_id="current_session",

@@ -23,7 +23,6 @@ from vivek.core.structured_workflow import (
     ContextSummary,
 )
 from vivek.core.prompt_templates import StructuredPromptBuilder
-from vivek.core.context_condensation import ProgressiveContextManager, ContextType
 
 
 class StructuredPlannerModel:
@@ -33,7 +32,6 @@ class StructuredPlannerModel:
         self.provider = provider
         self.workflow = StructuredWorkflow()
         self.prompt_builder = StructuredPromptBuilder()
-        self.context_manager = ProgressiveContextManager()
         self.system_prompt = (
             "You are a senior software engineer and technical lead guiding a development project. "
             "Follow structured engineering practices: understand requirements, decompose into activities, "
@@ -66,9 +64,6 @@ class StructuredPlannerModel:
         # Create structured task plan
         task_plan = self._create_task_plan(understanding, detailed_activities, tasks)
 
-        # Add to context history
-        self._update_context_history(understanding, activities, tasks)
-
         return execution_complete(
             output=task_plan,
             from_node="structured_planner",
@@ -82,7 +77,7 @@ class StructuredPlannerModel:
         """Phase 1: Understand task and clarify scope"""
         # Build context summary
         context_summary = self.prompt_builder.build_context_summary(
-            self.context_manager.context_history
+            []
         )
 
         # Build understanding prompt
@@ -403,48 +398,22 @@ class StructuredPlannerModel:
             max(mode_counts.items(), key=lambda x: x[1])[0] if mode_counts else "coder"
         )
 
-    def _update_context_history(
-        self,
-        understanding: Dict[str, Any],
-        activities: List[ActivityBreakdown],
-        tasks: List[TaskDefinition],
-    ):
-        """Update context history with current work"""
-        # Add understanding to context
-        self.context_manager.add_context_item(
-            content=f"Understanding: {understanding.get('core_intent', '')}",
-            context_type=ContextType.DECISION,
-            importance=0.8,
-            source="structured_planner",
-            tags=["understanding", "planning"],
-        )
 
-        # Add activities to context
-        for activity in activities:
-            self.context_manager.add_context_item(
-                content=f"Activity: {activity.name}",
-                context_type=ContextType.ACTION,
-                importance=0.7,
-                source="structured_planner",
-                tags=["activity", activity.activity_id],
-            )
-
-        # Add high-level tasks to context
-        for task in tasks[:3]:  # Limit to first 3 tasks to avoid overflow
-            self.context_manager.add_context_item(
-                content=f"Task: {task.description}",
-                context_type=ContextType.ACTION,
-                importance=0.6,
-                source="structured_planner",
-                tags=["task", task.task_id],
-            )
 
     def review_output(
         self, task_description: str, executor_output: str
     ) -> Dict[str, Any]:
         """Review executor output using structured approach"""
-        # Use context manager to get relevant context
-        context_summary = self.context_manager.get_condensed_context(strategy="recent")
+        # Use empty context summary since context condensation is removed
+        context_summary = ContextSummary(
+            session_id="current",
+            timestamp="now",
+            short_term_memory=[],
+            medium_term_memory=[],
+            long_term_memory={},
+            token_budget=4000,
+            compression_strategy="none",
+        )
 
         # Build review prompt with structured approach
         review_prompt = self._build_structured_review_prompt(

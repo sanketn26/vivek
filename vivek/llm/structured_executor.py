@@ -16,7 +16,6 @@ from vivek.core.message_protocol import (
 )
 from vivek.core.structured_workflow import TaskDefinition, ContextSummary, WorkflowPhase
 from vivek.core.prompt_templates import StructuredPromptBuilder
-from vivek.core.context_condensation import ProgressiveContextManager, ContextType
 
 
 class StructuredExecutor:
@@ -31,7 +30,6 @@ class StructuredExecutor:
         self.provider = provider
         self.mode = mode
         self.prompt_builder = StructuredPromptBuilder()
-        self.context_manager = ProgressiveContextManager()
         self.system_prompt = self._build_system_prompt()
 
     def _build_system_prompt(self) -> str:
@@ -135,9 +133,6 @@ You facilitate collaborative development tasks:
 
             # Extract metadata from execution
             metadata = self._extract_execution_metadata(execution_results, task_plan)
-
-            # Update context with execution results
-            self._update_execution_context(execution_results, task_plan)
 
             return execution_complete(
                 output=execution_results,
@@ -450,28 +445,7 @@ Focus on delivering working, maintainable code.""",
             "structured_execution": True,
         }
 
-    def _update_execution_context(
-        self, execution_results: Dict[str, Any], task_plan: Dict[str, Any]
-    ):
-        """Update context with execution results"""
-        # Add execution summary to context
-        self.context_manager.add_context_item(
-            content=f"Executed {len(execution_results.get('work_items_executed', []))} work items in {self.mode} mode",
-            context_type=ContextType.ACTION,
-            importance=0.6,
-            source=f"structured_executor_{self.mode}",
-            tags=["execution", "completion", self.mode],
-        )
 
-        # Add any important decisions or learnings
-        if execution_results.get("overall_status") == "completed":
-            self.context_manager.add_context_item(
-                content=f"Successfully completed task: {task_plan.get('description', '')}",
-                context_type=ContextType.RESULT,
-                importance=0.7,
-                source=f"structured_executor_{self.mode}",
-                tags=["result", "success", self.mode],
-            )
 
 
 def get_structured_executor(mode: str, provider: LLMProvider) -> StructuredExecutor:
