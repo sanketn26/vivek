@@ -5,10 +5,9 @@ This module implements intelligent context management that allows LLMs with
 limited context windows to remain effective over extended conversations.
 """
 
-import json
 import time
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
 
 from .structured_workflow import ContextSummary, ActivityBreakdown, TaskDefinition

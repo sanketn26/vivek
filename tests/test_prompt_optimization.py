@@ -7,12 +7,14 @@ This test suite validates:
 4. Plugin performance (caching, etc.)
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from vivek.llm.provider import OllamaProvider
-from vivek.llm.plugins.base.registry import get_registry, discover_plugins
-from vivek.llm.executor import get_executor
+
+import pytest
+
 from vivek.llm.constants import Mode
+from vivek.llm.executor import get_executor
+from vivek.llm.plugins.base.registry import discover_plugins, get_registry
+from vivek.llm.provider import OllamaProvider
 
 
 def count_tokens_simple(text: str) -> int:
@@ -253,7 +255,7 @@ class TestPromptQuality:
         This test will FAIL (RED) initially - we haven't deleted examples yet.
         After deleting example methods, it will pass (GREEN).
         """
-        from vivek.llm.plugins.languages import python, typescript, go
+        from vivek.llm.plugins.languages import go, python, typescript
 
         # Check that get_code_example helper methods don't exist
         for plugin_module in [python, typescript, go]:
@@ -306,8 +308,9 @@ class TestPromptQuality:
         This test will FAIL (RED) initially - conventions have many unused fields.
         After simplification, it will pass (GREEN).
         """
-        from vivek.llm.plugins.base.language_plugin import LanguageConventions
         from dataclasses import fields
+
+        from vivek.llm.plugins.base.language_plugin import LanguageConventions
 
         # Get all fields in LanguageConventions
         convention_fields = {f.name for f in fields(LanguageConventions)}
@@ -357,23 +360,28 @@ class TestTokenCounting:
             ],
         }
 
-    def test_prompt_token_counting(self, mock_provider, sample_task_plan, caplog):
+    def test_prompt_token_counting(self, mock_provider, sample_task_plan):
         """Test that executor logs token count.
 
-        This test will FAIL (RED) initially - token counting not implemented.
-        After implementation, it will pass (GREEN).
+        This test verifies that the executor properly calls the token counting utility.
+        We test this by verifying the function is called rather than checking logs,
+        which can be affected by test isolation issues.
         """
-        import logging
+        with patch("vivek.llm.executor.log_token_count") as mock_log_token_count:
+            mock_log_token_count.return_value = 100  # Mock return value
 
-        caplog.set_level(logging.INFO)
+            executor = get_executor(Mode.CODER.value, mock_provider, "python")
+            prompt = executor.build_prompt(sample_task_plan, context="Test context")
 
-        executor = get_executor(Mode.CODER.value, mock_provider, "python")
-        prompt = executor.build_prompt(sample_task_plan, context="Test context")
-
-        # Check that token count was logged
-        assert any(
-            "token" in record.message.lower() for record in caplog.records
-        ), "Executor should log token count when building prompt"
+            # Verify log_token_count was called
+            assert (
+                mock_log_token_count.called
+            ), "Executor should call log_token_count when building prompt"
+            # Verify it was called with the prompt
+            call_args = mock_log_token_count.call_args
+            assert (
+                call_args[0][0] == prompt
+            ), "log_token_count should be called with the generated prompt"
 
 
 class TestPluginPerformance:
