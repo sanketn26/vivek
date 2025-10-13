@@ -2,9 +2,10 @@
 Semantic Retrieval using Embeddings
 """
 
-import numpy as np
-from typing import List, Dict, Any
 import hashlib
+from typing import Any, Dict, List
+
+import numpy as np
 
 
 class EmbeddingModel:

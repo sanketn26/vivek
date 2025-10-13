@@ -8,21 +8,22 @@ Unit t
 +-***ests for agentic_context.retrieval.retrieval_strategies module
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
+
+from vivek.agentic_context.core.context_storage import ContextCategory, ContextStorage
 from vivek.agentic_context.retrieval.retrieval_strategies import (
-    RetrievalStrategy,
-    RetrievalConfig,
-    RetrievalCache,
+    AutoRetriever,
     BaseRetriever,
-    TagBasedRetriever,
     EmbeddingBasedRetriever,
     HybridRetriever,
-    AutoRetriever,
+    RetrievalCache,
+    RetrievalConfig,
+    RetrievalStrategy,
     RetrieverFactory,
+    TagBasedRetriever,
 )
-from vivek.agentic_context.core.context_storage import ContextStorage, ContextCategory
 
 
 class TestRetrievalConfig:

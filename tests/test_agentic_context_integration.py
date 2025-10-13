@@ -4,13 +4,14 @@ Integration tests for agentic_context package
 Tests complete workflows and interactions between components
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from contextlib import contextmanager
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from vivek.agentic_context.config import Config
-from vivek.agentic_context.workflow import ContextWorkflow
 from vivek.agentic_context.core.context_storage import ContextCategory
+from vivek.agentic_context.workflow import ContextWorkflow
 
 
 def create_context_manager_mock(**attrs):
@@ -26,13 +27,21 @@ def create_context_manager_mock(**attrs):
 class TestCompleteWorkflowIntegration:
     """Test complete workflow scenarios"""
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_basic_workflow_execution(self):
         """Test basic workflow from session to task completion"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -45,17 +54,15 @@ class TestCompleteWorkflowIntegration:
                 record_action=Mock(),
                 record_decision=Mock(),
                 record_learning=Mock(),
-                set_result=Mock()
+                set_result=Mock(),
             )
 
             mock_activity = create_context_manager_mock(
-                activity_id="act_001",
-                task=Mock(return_value=mock_task)
+                activity_id="act_001", task=Mock(return_value=mock_task)
             )
 
             mock_session = create_context_manager_mock(
-                session_id="session_001",
-                activity=Mock(return_value=mock_activity)
+                session_id="session_001", activity=Mock(return_value=mock_activity)
             )
 
             mock_storage_class.return_value = mock_storage
@@ -68,13 +75,19 @@ class TestCompleteWorkflowIntegration:
             mock_storage.build_hierarchical_context.return_value = {
                 "session": {"original_ask": "Test"},
                 "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"}
+                "task": {"description": "Test task"},
             }
 
             # Mock context managers in workflow classes
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 mock_session_class.return_value = mock_session
                 mock_activity_class.return_value = mock_activity
@@ -89,14 +102,20 @@ class TestCompleteWorkflowIntegration:
                         ["auth", "api"],
                         "coder",
                         "auth_service",
-                        "Need JWT implementation"
+                        "Need JWT implementation",
                     ) as activity:
-                        with activity.task("Create middleware", ["middleware", "auth"]) as task:
+                        with activity.task(
+                            "Create middleware", ["middleware", "auth"]
+                        ) as task:
                             # Simulate work
                             prompt = task.build_prompt()
                             task.record_action("Created middleware", file="auth.py")
-                            task.record_decision("Use JWT", reasoning="Industry standard")
-                            task.record_learning("Validate tokens", lesson_type="security")
+                            task.record_decision(
+                                "Use JWT", reasoning="Industry standard"
+                            )
+                            task.record_learning(
+                                "Validate tokens", lesson_type="security"
+                            )
                             task.set_result("Middleware completed")
 
                 # Verify all operations were called
@@ -104,13 +123,21 @@ class TestCompleteWorkflowIntegration:
                 mock_storage.create_activity.assert_called_once()
                 mock_storage.create_task.assert_called_once()
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_workflow_with_context_retrieval(self):
         """Test workflow with historical context retrieval"""
         config = Config.from_preset("production")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -125,11 +152,11 @@ class TestCompleteWorkflowIntegration:
                     "item": {
                         "content": "Previous JWT implementation",
                         "category": "actions",
-                        "tags": ["jwt", "auth"]
+                        "tags": ["jwt", "auth"],
                     },
                     "score": 0.8,
                     "matched_tags": ["auth"],
-                    "category": "actions"
+                    "category": "actions",
                 }
             ]
 
@@ -137,12 +164,18 @@ class TestCompleteWorkflowIntegration:
             mock_storage.build_hierarchical_context.return_value = {
                 "session": {"original_ask": "Build auth system"},
                 "activity": {"description": "Implement JWT"},
-                "task": {"description": "Create token validation"}
+                "task": {"description": "Create token validation"},
             }
 
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 # Set up context managers
                 mock_session = Mock()
@@ -169,7 +202,9 @@ class TestCompleteWorkflowIntegration:
                 workflow = ContextWorkflow(config)
 
                 with workflow.session("Test session") as session:
-                    with session.activity("Test", ["test"], "coder", "test", "Test") as activity:
+                    with session.activity(
+                        "Test", ["test"], "coder", "test", "Test"
+                    ) as activity:
                         with activity.task("Test task", ["test"]) as task:
                             # Build prompt should include historical context
                             prompt = task.build_prompt()
@@ -181,12 +216,16 @@ class TestCompleteWorkflowIntegration:
         """Test workflow handles errors gracefully"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class:
+        with patch(
+            "vivek.agentic_context.workflow.ContextStorage"
+        ) as mock_storage_class:
             # Make storage creation fail
             mock_storage_class.side_effect = Exception("Storage init failed")
 
             # Workflow creation should fail gracefully
-            with pytest.raises(Exception):  # Would be StorageError in real implementation
+            with pytest.raises(
+                Exception
+            ):  # Would be StorageError in real implementation
                 ContextWorkflow(config)
 
     def test_configuration_preset_integration(self):
@@ -198,19 +237,29 @@ class TestCompleteWorkflowIntegration:
             config = Config.from_preset(preset)
 
             # Should be able to create workflow with any preset
-            with patch('vivek.agentic_context.workflow.ContextStorage'), \
-                 patch('vivek.agentic_context.workflow.RetrieverFactory'):
+            with (
+                patch("vivek.agentic_context.workflow.ContextStorage"),
+                patch("vivek.agentic_context.workflow.RetrieverFactory"),
+            ):
 
                 workflow = ContextWorkflow(config)
                 assert workflow.config == config
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_context_persistence_across_tasks(self):
         """Test that context persists across multiple tasks"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -224,12 +273,18 @@ class TestCompleteWorkflowIntegration:
             mock_storage.build_hierarchical_context.return_value = {
                 "session": {"original_ask": "Test"},
                 "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"}
+                "task": {"description": "Test task"},
             }
 
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 # Set up context managers
                 mock_session = Mock()
@@ -273,7 +328,9 @@ class TestCompleteWorkflowIntegration:
                 workflow = ContextWorkflow(config)
 
                 with workflow.session("Test session") as session:
-                    with session.activity("Test", ["test"], "coder", "test", "Test") as activity:
+                    with session.activity(
+                        "Test", ["test"], "coder", "test", "Test"
+                    ) as activity:
                         # First task
                         with activity.task("Task 1", ["test"]) as task1:
                             task1.record_action("Action 1", file="file1.py")
@@ -291,8 +348,14 @@ class TestCompleteWorkflowIntegration:
         """Test switching retrieval strategies during workflow execution"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -305,12 +368,18 @@ class TestCompleteWorkflowIntegration:
             mock_storage.build_hierarchical_context.return_value = {
                 "session": {"original_ask": "Test"},
                 "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"}
+                "task": {"description": "Test task"},
             }
 
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 # Set up context managers
                 mock_session = Mock()
@@ -333,7 +402,9 @@ class TestCompleteWorkflowIntegration:
                 workflow = ContextWorkflow(config)
 
                 # Switch strategy
-                with patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_new_factory:
+                with patch(
+                    "vivek.agentic_context.workflow.RetrieverFactory"
+                ) as mock_new_factory:
                     mock_new_retriever = Mock()
                     mock_new_factory.create_retriever.return_value = mock_new_retriever
 
@@ -347,8 +418,14 @@ class TestCompleteWorkflowIntegration:
         """Test workflow statistics collection"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -362,7 +439,7 @@ class TestCompleteWorkflowIntegration:
                 "actions": 5,
                 "decisions": 2,
                 "results": 3,
-                "learnings": 1
+                "learnings": 1,
             }
 
             mock_storage.get_statistics.return_value = expected_stats
@@ -377,13 +454,21 @@ class TestCompleteWorkflowIntegration:
             assert stats == expected_stats
             mock_storage.get_statistics.assert_called_once()
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_workflow_export_functionality(self):
         """Test workflow export for persistence"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -409,7 +494,7 @@ class TestCompleteWorkflowIntegration:
             mock_item.metadata = {}
 
             # Mock context DB structure
-            with patch.object(mock_storage, 'context_db') as mock_db:
+            with patch.object(mock_storage, "context_db") as mock_db:
                 mock_category = Mock()
                 mock_category.value = "actions"
                 mock_db.items.return_value = [(mock_category, [mock_item])]
@@ -447,8 +532,14 @@ class TestCrossComponentIntegration:
         for preset in presets:
             config = Config.from_preset(preset)
 
-            with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-                 patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.ContextStorage"
+                ) as mock_storage_class,
+                patch(
+                    "vivek.agentic_context.workflow.RetrieverFactory"
+                ) as mock_factory_class,
+            ):
 
                 mock_storage = Mock()
                 mock_retriever = Mock()
@@ -459,7 +550,9 @@ class TestCrossComponentIntegration:
                 workflow = ContextWorkflow(config)
 
                 # Config should be passed to retriever factory
-                mock_factory_class.create_retriever.assert_called_with(mock_storage, config)
+                mock_factory_class.create_retriever.assert_called_with(
+                    mock_storage, config
+                )
 
     def test_retrieval_strategy_configuration(self):
         """Test that retrieval strategy configuration affects behavior"""
@@ -467,10 +560,18 @@ class TestCrossComponentIntegration:
 
         for strategy in strategies:
             config = Config.from_preset("development")
-            config = Config.from_preset("development", **{f"retrieval.strategy": strategy})
+            config = Config.from_preset(
+                "development", **{f"retrieval.strategy": strategy}
+            )
 
-            with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-                 patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.ContextStorage"
+                ) as mock_storage_class,
+                patch(
+                    "vivek.agentic_context.workflow.RetrieverFactory"
+                ) as mock_factory_class,
+            ):
 
                 mock_storage = Mock()
                 mock_retriever = Mock()
@@ -487,8 +588,14 @@ class TestCrossComponentIntegration:
         """Test that context hierarchy is properly validated"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             mock_storage = Mock()
             mock_retriever = Mock()
@@ -500,9 +607,15 @@ class TestCrossComponentIntegration:
             mock_storage_class.return_value = mock_storage
             mock_factory_class.create_retriever.return_value = mock_retriever
 
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 # Set up context managers
                 mock_session = Mock()
@@ -535,13 +648,21 @@ class TestCrossComponentIntegration:
 class TestPerformanceAndScalability:
     """Test performance and scalability aspects"""
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_large_context_handling(self):
         """Test handling of large context databases"""
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             # Set up mocks
             mock_storage = Mock()
@@ -549,7 +670,11 @@ class TestPerformanceAndScalability:
 
             # Mock large number of context items
             large_context_items = [
-                Mock(content=f"Content {i}", tags=[f"tag{i}"], category=ContextCategory.ACTIONS)
+                Mock(
+                    content=f"Content {i}",
+                    tags=[f"tag{i}"],
+                    category=ContextCategory.ACTIONS,
+                )
                 for i in range(1000)
             ]
 
@@ -559,15 +684,25 @@ class TestPerformanceAndScalability:
 
             # Mock retriever to handle large dataset
             mock_retriever.retrieve.return_value = [
-                {"item": {"content": "Relevant item"}, "score": 0.8, "matched_tags": ["test"]}
+                {
+                    "item": {"content": "Relevant item"},
+                    "score": 0.8,
+                    "matched_tags": ["test"],
+                }
             ]
 
             workflow = ContextWorkflow(config)
 
             # Should handle large context without issues
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 mock_session = Mock()
                 mock_session.__enter__ = Mock(return_value=mock_session)
@@ -587,7 +722,9 @@ class TestPerformanceAndScalability:
 
                 # Execute workflow with large context
                 with workflow.session("Test") as session:
-                    with session.activity("Test", ["test"], "coder", "test", "Test") as activity:
+                    with session.activity(
+                        "Test", ["test"], "coder", "test", "Test"
+                    ) as activity:
                         with activity.task("Test task", ["test"]) as task:
                             # Should handle large context retrieval
                             prompt = task.build_prompt()
@@ -595,7 +732,9 @@ class TestPerformanceAndScalability:
                 # Verify retriever was called with large dataset
                 mock_storage.get_all_context_items.assert_called()
 
-    @pytest.mark.skip(reason="Integration test requires complex mocking - needs refactoring")
+    @pytest.mark.skip(
+        reason="Integration test requires complex mocking - needs refactoring"
+    )
     def test_concurrent_workflow_execution(self):
         """Test concurrent workflow execution"""
         import threading
@@ -603,8 +742,14 @@ class TestPerformanceAndScalability:
 
         config = Config.from_preset("development")
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             mock_storage = Mock()
             mock_retriever = Mock()
@@ -616,12 +761,18 @@ class TestPerformanceAndScalability:
             mock_storage.build_hierarchical_context.return_value = {
                 "session": {"original_ask": "Test"},
                 "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"}
+                "task": {"description": "Test task"},
             }
 
-            with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class, \
-                 patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class, \
-                 patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+            with (
+                patch(
+                    "vivek.agentic_context.workflow.SessionContext"
+                ) as mock_session_class,
+                patch(
+                    "vivek.agentic_context.workflow.ActivityContext"
+                ) as mock_activity_class,
+                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
+            ):
 
                 mock_session = Mock()
                 mock_session.__enter__ = Mock(return_value=mock_session)
@@ -645,8 +796,16 @@ class TestPerformanceAndScalability:
                     workflow = ContextWorkflow(config)
 
                     with workflow.session(f"Session {workflow_id}") as session:
-                        with session.activity(f"Activity {workflow_id}", [f"tag{workflow_id}"], "coder", "test", "Test") as activity:
-                            with activity.task(f"Task {workflow_id}", [f"tag{workflow_id}"]) as task:
+                        with session.activity(
+                            f"Activity {workflow_id}",
+                            [f"tag{workflow_id}"],
+                            "coder",
+                            "test",
+                            "Test",
+                        ) as activity:
+                            with activity.task(
+                                f"Task {workflow_id}", [f"tag{workflow_id}"]
+                            ) as task:
                                 task.record_action(f"Action {workflow_id}")
                                 time.sleep(0.01)  # Simulate work
 

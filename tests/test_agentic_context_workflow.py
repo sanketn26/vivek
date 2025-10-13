@@ -2,17 +2,18 @@
 Unit tests for agentic_context.workflow module
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
+
 from vivek.agentic_context.workflow import (
-    ContextWorkflow,
-    SessionContext,
     ActivityContext,
+    ContextWorkflow,
+    RetrievalError,
+    SessionContext,
+    StorageError,
     TaskContext,
     ValidationError,
-    StorageError,
-    RetrievalError,
 )
 
 
@@ -29,7 +30,7 @@ class TestTaskContext:
         self.mock_storage.build_hierarchical_context.return_value = {
             "session": {"original_ask": "Test session"},
             "activity": {"description": "Test activity"},
-            "task": {"description": "Test task"}
+            "task": {"description": "Test task"},
         }
 
         self.task_context = TaskContext(
@@ -38,7 +39,7 @@ class TestTaskContext:
             ["feature", "implementation"],
             self.mock_storage,
             self.mock_retriever,
-            self.config
+            self.config,
         )
 
     def test_initialization(self):
@@ -51,13 +52,34 @@ class TestTaskContext:
     def test_initialization_validation_errors(self):
         """Test TaskContext validation errors"""
         with pytest.raises(ValidationError):
-            TaskContext("", "Test", ["test"], self.mock_storage, self.mock_retriever, self.config)
+            TaskContext(
+                "",
+                "Test",
+                ["test"],
+                self.mock_storage,
+                self.mock_retriever,
+                self.config,
+            )
 
         with pytest.raises(ValidationError):
-            TaskContext("task_001", "", ["test"], self.mock_storage, self.mock_retriever, self.config)
+            TaskContext(
+                "task_001",
+                "",
+                ["test"],
+                self.mock_storage,
+                self.mock_retriever,
+                self.config,
+            )
 
         with pytest.raises(ValidationError):
-            TaskContext("task_001", "Test", [], self.mock_storage, self.mock_retriever, self.config)
+            TaskContext(
+                "task_001",
+                "Test",
+                [],
+                self.mock_storage,
+                self.mock_retriever,
+                self.config,
+            )
 
     def test_context_property(self):
         """Test context property"""
@@ -75,7 +97,7 @@ class TestTaskContext:
                 "item": {"content": "Previous implementation", "category": "actions"},
                 "score": 0.8,
                 "matched_tags": ["feature"],
-                "category": "actions"
+                "category": "actions",
             }
         ]
 
@@ -112,9 +134,7 @@ class TestTaskContext:
         self.mock_storage.add_context.return_value = Mock()
 
         result = self.task_context.record_action(
-            "Created new function",
-            file="test.py",
-            lines=50
+            "Created new function", file="test.py", lines=50
         )
 
         self.mock_storage.add_context.assert_called_once()
@@ -129,8 +149,7 @@ class TestTaskContext:
         self.mock_storage.add_context.return_value = Mock()
 
         result = self.task_context.record_decision(
-            "Use async approach",
-            reasoning="Better performance"
+            "Use async approach", reasoning="Better performance"
         )
 
         self.mock_storage.add_context.assert_called_once()
@@ -143,13 +162,14 @@ class TestTaskContext:
         self.mock_storage.add_context.return_value = Mock()
 
         result = self.task_context.record_learning(
-            "Always validate input data",
-            lesson_type="best_practice"
+            "Always validate input data", lesson_type="best_practice"
         )
 
         self.mock_storage.add_context.assert_called_once()
         call_args = self.mock_storage.add_context.call_args
-        assert call_args[0][1] == "Always validate input data"  # ContextCategory.LEARNINGS
+        assert (
+            call_args[0][1] == "Always validate input data"
+        )  # ContextCategory.LEARNINGS
         assert call_args[1]["lesson_type"] == "best_practice"
 
     def test_record_validation_errors(self):
@@ -182,7 +202,9 @@ class TestTaskContext:
         self.task_context._finalize()
 
         # Verify completion and result recording
-        self.mock_storage.complete_task.assert_called_once_with("task_001", "Final result")
+        self.mock_storage.complete_task.assert_called_once_with(
+            "task_001", "Final result"
+        )
         self.mock_storage.add_context.assert_called_once()
 
     def test_finalize_without_result(self):
@@ -206,7 +228,7 @@ class TestActivityContext:
         # Mock storage hierarchy
         self.mock_storage.build_hierarchical_context.return_value = {
             "session": {"original_ask": "Test session"},
-            "activity": {"description": "Test activity"}
+            "activity": {"description": "Test activity"},
         }
 
         # Mock task creation
@@ -221,7 +243,7 @@ class TestActivityContext:
             "Need to implement JWT validation",
             self.mock_storage,
             self.mock_retriever,
-            self.config
+            self.config,
         )
 
     def test_initialization(self):
@@ -234,11 +256,13 @@ class TestActivityContext:
 
     def test_task_context_manager(self):
         """Test task context manager"""
-        with patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+        with patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class:
             mock_task_instance = Mock()
             mock_task_class.return_value = mock_task_instance
 
-            with self.activity_context.task("Create JWT handler", ["jwt", "handler"]) as task:
+            with self.activity_context.task(
+                "Create JWT handler", ["jwt", "handler"]
+            ) as task:
                 assert task == mock_task_instance
 
             # Verify task was created correctly
@@ -250,7 +274,7 @@ class TestActivityContext:
 
     def test_task_context_manager_inheritance(self):
         """Test task inherits activity tags"""
-        with patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+        with patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class:
             with self.activity_context.task("Test task") as task:
                 pass
 
@@ -262,7 +286,7 @@ class TestActivityContext:
 
     def test_task_context_manager_with_custom_tags(self):
         """Test task with custom tags"""
-        with patch('vivek.agentic_context.workflow.TaskContext') as mock_task_class:
+        with patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class:
             with self.activity_context.task("Test task", ["custom", "tags"]) as task:
                 pass
 
@@ -278,7 +302,9 @@ class TestActivityContext:
         mock_task = Mock()
         mock_task._finalize = Mock()
 
-        with patch('vivek.agentic_context.workflow.TaskContext', return_value=mock_task):
+        with patch(
+            "vivek.agentic_context.workflow.TaskContext", return_value=mock_task
+        ):
             with pytest.raises(Exception, match="Test error"):
                 with self.activity_context.task("Test task") as task:
                     raise Exception("Test error")
@@ -311,19 +337,24 @@ class TestSessionContext:
             "Implement product catalog, shopping cart, and payment processing",
             self.mock_storage,
             self.mock_retriever,
-            self.config
+            self.config,
         )
 
     def test_initialization(self):
         """Test SessionContext initialization"""
         assert self.session_context.session_id == "session_001"
         assert self.session_context.original_ask == "Build e-commerce platform"
-        assert self.session_context.high_level_plan == "Implement product catalog, shopping cart, and payment processing"
+        assert (
+            self.session_context.high_level_plan
+            == "Implement product catalog, shopping cart, and payment processing"
+        )
         assert self.session_context._activity_counter == 0
 
     def test_activity_context_manager(self):
         """Test activity context manager"""
-        with patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity_class:
+        with patch(
+            "vivek.agentic_context.workflow.ActivityContext"
+        ) as mock_activity_class:
             mock_activity_instance = Mock()
             mock_activity_class.return_value = mock_activity_instance
 
@@ -332,7 +363,7 @@ class TestSessionContext:
                 ["auth", "user"],
                 "coder",
                 "auth_service",
-                "Need to implement login, register, and password reset"
+                "Need to implement login, register, and password reset",
             ) as activity:
                 assert activity == mock_activity_instance
 
@@ -352,11 +383,17 @@ class TestContextWorkflow:
         """Set up ContextWorkflow with mocked dependencies"""
         self.config = {
             "retrieval": {"strategy": "tags_only", "max_results": 5},
-            "semantic": {"enabled": False}
+            "semantic": {"enabled": False},
         }
 
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class, \
-             patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory_class:
+        with (
+            patch(
+                "vivek.agentic_context.workflow.ContextStorage"
+            ) as mock_storage_class,
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory"
+            ) as mock_factory_class,
+        ):
 
             self.mock_storage = Mock()
             self.mock_retriever = Mock()
@@ -376,7 +413,9 @@ class TestContextWorkflow:
 
     def test_initialization_storage_error(self):
         """Test initialization handles storage errors"""
-        with patch('vivek.agentic_context.workflow.ContextStorage') as mock_storage_class:
+        with patch(
+            "vivek.agentic_context.workflow.ContextStorage"
+        ) as mock_storage_class:
             mock_storage_class.side_effect = Exception("Storage init failed")
 
             with pytest.raises(StorageError, match="Failed to initialize storage"):
@@ -384,8 +423,12 @@ class TestContextWorkflow:
 
     def test_initialization_retrieval_error(self):
         """Test initialization handles retrieval errors"""
-        with patch('vivek.agentic_context.workflow.ContextStorage'), \
-             patch('vivek.agentic_context.workflow.RetrieverFactory.create_retriever') as mock_create:
+        with (
+            patch("vivek.agentic_context.workflow.ContextStorage"),
+            patch(
+                "vivek.agentic_context.workflow.RetrieverFactory.create_retriever"
+            ) as mock_create,
+        ):
 
             mock_create.side_effect = Exception("Retriever init failed")
 
@@ -394,7 +437,9 @@ class TestContextWorkflow:
 
     def test_session_context_manager(self):
         """Test session context manager"""
-        with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class:
+        with patch(
+            "vivek.agentic_context.workflow.SessionContext"
+        ) as mock_session_class:
             mock_session_instance = Mock()
             mock_session_class.return_value = mock_session_instance
 
@@ -405,14 +450,17 @@ class TestContextWorkflow:
             mock_session_class.assert_called_once()
             call_args = mock_session_class.call_args
             assert call_args[0][1] == "Build API system"  # original_ask
-            assert call_args[0][2] == "To be determined by planner"  # default high_level_plan
+            assert (
+                call_args[0][2] == "To be determined by planner"
+            )  # default high_level_plan
 
     def test_session_with_high_level_plan(self):
         """Test session with custom high level plan"""
-        with patch('vivek.agentic_context.workflow.SessionContext') as mock_session_class:
+        with patch(
+            "vivek.agentic_context.workflow.SessionContext"
+        ) as mock_session_class:
             with self.workflow.session(
-                "Build API",
-                high_level_plan="Implement REST API with auth"
+                "Build API", high_level_plan="Implement REST API with auth"
             ) as session:
                 pass
 
@@ -430,7 +478,7 @@ class TestContextWorkflow:
 
     def test_switch_strategy(self):
         """Test switching retrieval strategy"""
-        with patch('vivek.agentic_context.workflow.RetrieverFactory') as mock_factory:
+        with patch("vivek.agentic_context.workflow.RetrieverFactory") as mock_factory:
             mock_new_retriever = Mock()
             # Reset the call count since it was called during initialization
             mock_factory.create_retriever.reset_mock()
@@ -462,9 +510,7 @@ class TestContextWorkflow:
         mock_session.created_at.isoformat.return_value = "2023-01-01T00:00:00"
 
         self.mock_storage.sessions = {"session_001": mock_session}
-        self.mock_storage.context_db = {
-            Mock(): [Mock()]  # Mock enum and items
-        }
+        self.mock_storage.context_db = {Mock(): [Mock()]}  # Mock enum and items
 
         # Mock context DB items
         mock_item = Mock()
@@ -476,7 +522,7 @@ class TestContextWorkflow:
         mock_item.metadata = {}
 
         # Set up the context DB properly
-        with patch.object(self.mock_storage, 'context_db') as mock_db:
+        with patch.object(self.mock_storage, "context_db") as mock_db:
             mock_category = Mock()
             mock_category.value = "actions"
             mock_db.items.return_value = [(mock_category, [mock_item])]
@@ -489,9 +535,11 @@ class TestContextWorkflow:
     def test_nested_context_managers(self):
         """Test nested context managers work correctly"""
         # This test verifies the integration between all context managers
-        with patch('vivek.agentic_context.workflow.SessionContext') as mock_session, \
-             patch('vivek.agentic_context.workflow.ActivityContext') as mock_activity, \
-             patch('vivek.agentic_context.workflow.TaskContext') as mock_task:
+        with (
+            patch("vivek.agentic_context.workflow.SessionContext") as mock_session,
+            patch("vivek.agentic_context.workflow.ActivityContext") as mock_activity,
+            patch("vivek.agentic_context.workflow.TaskContext") as mock_task,
+        ):
 
             # Create mock instances that support context manager protocol
             mock_session_instance = Mock()
@@ -519,7 +567,9 @@ class TestContextWorkflow:
 
             # Test nested usage
             with self.workflow.session("Test session") as session:
-                with session.activity("Test activity", ["test"], "coder", "test", "Test analysis") as activity:
+                with session.activity(
+                    "Test activity", ["test"], "coder", "test", "Test analysis"
+                ) as activity:
                     with activity.task("Test task", ["test"]) as task:
                         pass  # Work here
 

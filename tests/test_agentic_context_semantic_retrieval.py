@@ -2,14 +2,15 @@
 Unit tests for agentic_context.retrieval.semantic_retrieval module
 """
 
-import pytest
-import numpy as np
 from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 
 from vivek.agentic_context.retrieval.semantic_retrieval import (
     EmbeddingModel,
-    SemanticSimilarity,
     SemanticRetriever,
+    SemanticSimilarity,
 )
 
 
@@ -23,7 +24,7 @@ class TestEmbeddingModel:
 
     def test_initialization(self):
         """Test EmbeddingModel initialization"""
-        with patch('sentence_transformers.SentenceTransformer') as mock_st:
+        with patch("sentence_transformers.SentenceTransformer") as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -37,21 +38,23 @@ class TestEmbeddingModel:
 
     def test_initialization_with_custom_device(self):
         """Test initialization with custom device"""
-        with patch('sentence_transformers.SentenceTransformer') as mock_st:
+        with patch("sentence_transformers.SentenceTransformer") as mock_st:
             EmbeddingModel(self.model_name, device="cuda")
             mock_st.assert_called_once_with(self.model_name, device="cuda")
 
     def test_initialization_missing_dependency(self):
         """Test initialization handles missing sentence-transformers"""
-        with patch('sentence_transformers.SentenceTransformer') as mock_st:
+        with patch("sentence_transformers.SentenceTransformer") as mock_st:
             mock_st.side_effect = ImportError("sentence-transformers not installed")
 
-            with pytest.raises(ImportError, match="sentence-transformers not installed"):
+            with pytest.raises(
+                ImportError, match="sentence-transformers not installed"
+            ):
                 EmbeddingModel(self.model_name)
 
     def test_initialization_model_load_error(self):
         """Test initialization handles model loading errors"""
-        with patch('sentence_transformers.SentenceTransformer') as mock_st:
+        with patch("sentence_transformers.SentenceTransformer") as mock_st:
             mock_st.side_effect = Exception("Model load failed")
 
             with pytest.raises(RuntimeError, match="Failed to load model"):
@@ -59,7 +62,7 @@ class TestEmbeddingModel:
 
     def test_encode_empty_text(self):
         """Test encoding empty text"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             # Mock the model to avoid actual computation
@@ -74,7 +77,7 @@ class TestEmbeddingModel:
 
     def test_encode_whitespace_text(self):
         """Test encoding whitespace-only text"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             model.model = Mock()
@@ -88,7 +91,7 @@ class TestEmbeddingModel:
 
     def test_encode_with_caching(self):
         """Test encoding with caching enabled"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name, cache_size=10)
 
             model.model = Mock()
@@ -107,7 +110,7 @@ class TestEmbeddingModel:
 
     def test_encode_without_caching(self):
         """Test encoding with caching disabled"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             # Disable caching by using cache size 0
@@ -126,7 +129,7 @@ class TestEmbeddingModel:
 
     def test_encode_cache_eviction(self):
         """Test cache eviction when full"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name, cache_size=2)
 
             model.model = Mock()
@@ -145,7 +148,7 @@ class TestEmbeddingModel:
 
     def test_encode_batch_empty(self):
         """Test batch encoding empty list"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             model.model = Mock()
@@ -156,7 +159,7 @@ class TestEmbeddingModel:
 
     def test_encode_batch_with_empty_texts(self):
         """Test batch encoding with empty texts"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             model.model = Mock()
@@ -174,15 +177,14 @@ class TestEmbeddingModel:
 
     def test_encode_batch_with_caching(self):
         """Test batch encoding with caching"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name, cache_size=10)
 
             model.model = Mock()
             # First call encodes 2 texts in batch, returns 2D array
-            model.model.encode.return_value = np.array([
-                [0.1, 0.2, 0.3],  # text1
-                [0.4, 0.5, 0.6]   # text2
-            ])
+            model.model.encode.return_value = np.array(
+                [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]  # text1  # text2
+            )
             model.model.get_sentence_embedding_dimension.return_value = 3
 
             # First batch with new texts
@@ -198,7 +200,7 @@ class TestEmbeddingModel:
 
     def test_get_embedding_dim(self):
         """Test getting embedding dimension"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             model.model = Mock()
@@ -208,7 +210,7 @@ class TestEmbeddingModel:
 
     def test_get_embedding_dim_no_model(self):
         """Test getting embedding dimension when model not loaded"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             # Don't set model
@@ -219,7 +221,7 @@ class TestEmbeddingModel:
 
     def test_clear_cache(self):
         """Test clearing embedding cache"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name)
 
             # Add some cache entries
@@ -235,7 +237,7 @@ class TestEmbeddingModel:
 
     def test_get_cache_stats(self):
         """Test getting cache statistics"""
-        with patch('sentence_transformers.SentenceTransformer'):
+        with patch("sentence_transformers.SentenceTransformer"):
             model = EmbeddingModel(self.model_name, cache_size=100)
 
             # Add some cache entries
@@ -314,7 +316,7 @@ class TestSemanticSimilarity:
         embeddings = [
             np.array([1.0, 0.0]),  # Same as query
             np.array([0.0, 1.0]),  # Orthogonal to query
-            np.array([-1.0, 0.0])  # Opposite to query
+            np.array([-1.0, 0.0]),  # Opposite to query
         ]
 
         similarities = SemanticSimilarity.batch_cosine_similarity(query, embeddings)
@@ -334,10 +336,7 @@ class TestSemanticSimilarity:
         """Test batch cosine similarity with zero query vector"""
         query = np.array([0.0, 0.0])
 
-        embeddings = [
-            np.array([1.0, 0.0]),
-            np.array([0.0, 1.0])
-        ]
+        embeddings = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
 
         similarities = SemanticSimilarity.batch_cosine_similarity(query, embeddings)
 
@@ -351,7 +350,9 @@ class TestSemanticRetriever:
 
     def setup_method(self):
         """Set up SemanticRetriever for each test"""
-        with patch('vivek.agentic_context.retrieval.semantic_retrieval.EmbeddingModel') as mock_model_class:
+        with patch(
+            "vivek.agentic_context.retrieval.semantic_retrieval.EmbeddingModel"
+        ) as mock_model_class:
             self.mock_model = Mock()
             self.mock_model.encode.return_value = np.array([0.1, 0.2, 0.3])
             self.mock_model.get_sentence_embedding_dimension.return_value = 3
@@ -376,20 +377,24 @@ class TestSemanticRetriever:
             {
                 "content": "Authentication middleware",
                 "tags": ["auth", "middleware"],
-                "embedding": np.array([0.1, 0.2, 0.3])
+                "embedding": np.array([0.1, 0.2, 0.3]),
             },
             {
                 "content": "Database query optimization",
                 "tags": ["database", "performance"],
-                "embedding": np.array([0.4, 0.5, 0.6])
-            }
+                "embedding": np.array([0.4, 0.5, 0.6]),
+            },
         ]
 
         # Mock similarity calculation
-        with patch.object(self.retriever.similarity, 'batch_cosine_similarity') as mock_similarity:
+        with patch.object(
+            self.retriever.similarity, "batch_cosine_similarity"
+        ) as mock_similarity:
             mock_similarity.return_value = [0.8, 0.3]  # First item more similar
 
-            results = self.retriever.retrieve("auth system", items, top_k=5, min_score=0.0)
+            results = self.retriever.retrieve(
+                "auth system", items, top_k=5, min_score=0.0
+            )
 
             assert len(results) == 2
             # Should be sorted by similarity score
@@ -400,14 +405,18 @@ class TestSemanticRetriever:
         """Test retrieving without pre-computed embeddings"""
         items = [
             {"content": "Authentication middleware", "tags": ["auth"]},
-            {"content": "Database query", "tags": ["database"]}
+            {"content": "Database query", "tags": ["database"]},
         ]
 
         # Mock similarity calculation
-        with patch.object(self.retriever.similarity, 'batch_cosine_similarity') as mock_similarity:
+        with patch.object(
+            self.retriever.similarity, "batch_cosine_similarity"
+        ) as mock_similarity:
             mock_similarity.return_value = [0.8, 0.3]
 
-            results = self.retriever.retrieve("auth system", items, top_k=5, min_score=0.0)
+            results = self.retriever.retrieve(
+                "auth system", items, top_k=5, min_score=0.0
+            )
 
             assert len(results) == 2
             # Should generate embeddings from content
@@ -417,10 +426,12 @@ class TestSemanticRetriever:
         """Test retrieving with minimum score filtering"""
         items = [
             {"content": "High similarity", "tags": ["test"]},
-            {"content": "Low similarity", "tags": ["test"]}
+            {"content": "Low similarity", "tags": ["test"]},
         ]
 
-        with patch.object(self.retriever.similarity, 'batch_cosine_similarity') as mock_similarity:
+        with patch.object(
+            self.retriever.similarity, "batch_cosine_similarity"
+        ) as mock_similarity:
             mock_similarity.return_value = [0.8, 0.2]  # One above, one below threshold
 
             results = self.retriever.retrieve("test", items, top_k=5, min_score=0.5)
@@ -431,12 +442,11 @@ class TestSemanticRetriever:
 
     def test_retrieve_with_top_k_limiting(self):
         """Test retrieving with top-k limiting"""
-        items = [
-            {"content": f"Item {i}", "tags": ["test"]}
-            for i in range(5)
-        ]
+        items = [{"content": f"Item {i}", "tags": ["test"]} for i in range(5)]
 
-        with patch.object(self.retriever.similarity, 'batch_cosine_similarity') as mock_similarity:
+        with patch.object(
+            self.retriever.similarity, "batch_cosine_similarity"
+        ) as mock_similarity:
             # Return scores in descending order
             mock_similarity.return_value = [0.9, 0.8, 0.7, 0.6, 0.5]
 
@@ -452,7 +462,7 @@ class TestSemanticRetriever:
         """Test formatting item for embedding"""
         item = {
             "content": "Authentication middleware",
-            "tags": ["auth", "security", "middleware"]
+            "tags": ["auth", "security", "middleware"],
         }
 
         formatted = self.retriever._format_item_for_embedding(item)
@@ -481,13 +491,13 @@ class TestSemanticRetriever:
         """Test pre-computing embeddings for items"""
         items = [
             {"content": "Item 1", "tags": ["tag1"]},
-            {"content": "Item 2", "tags": ["tag2"]}
+            {"content": "Item 2", "tags": ["tag2"]},
         ]
 
         # Mock batch encoding
         self.mock_model.encode_batch.return_value = [
             np.array([0.1, 0.2]),
-            np.array([0.3, 0.4])
+            np.array([0.3, 0.4]),
         ]
 
         result = self.retriever.precompute_embeddings(items)

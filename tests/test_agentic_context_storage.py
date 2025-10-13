@@ -2,16 +2,17 @@
 Unit tests for agentic_context.core.context_storage module
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
+
 from vivek.agentic_context.core.context_storage import (
-    ContextStorage,
+    ActivityContext,
     ContextCategory,
     ContextItem,
+    ContextStorage,
     SessionContext,
-    ActivityContext,
     TaskContext,
 )
 
@@ -27,7 +28,7 @@ class TestContextItem:
             category=ContextCategory.ACTIONS,
             activity_id="act_001",
             task_id="task_001",
-            metadata={"key": "value"}
+            metadata={"key": "value"},
         )
 
         assert item.content == "test content"
@@ -63,12 +64,15 @@ class TestContextStorage:
         session = self.storage.create_session(
             "session_001",
             "Build auth system",
-            "Implement JWT authentication with refresh tokens"
+            "Implement JWT authentication with refresh tokens",
         )
 
         assert session.session_id == "session_001"
         assert session.original_ask == "Build auth system"
-        assert session.high_level_plan == "Implement JWT authentication with refresh tokens"
+        assert (
+            session.high_level_plan
+            == "Implement JWT authentication with refresh tokens"
+        )
         assert self.storage.current_session == session
         assert "session_001" in self.storage.sessions
 
@@ -105,7 +109,7 @@ class TestContextStorage:
             ["auth", "security"],
             "coder",
             "auth_service",
-            "Need to implement JWT token validation"
+            "Need to implement JWT token validation",
         )
 
         assert activity.activity_id == "act_001"
@@ -151,9 +155,7 @@ class TestContextStorage:
 
         # Create task
         task = self.storage.create_task(
-            "task_001",
-            "Implement feature",
-            ["feature", "implementation"]
+            "task_001", "Implement feature", ["feature", "implementation"]
         )
 
         assert task.task_id == "task_001"
@@ -177,7 +179,9 @@ class TestContextStorage:
 
         # Check current task is marked complete
         assert self.storage.current_task is not None
-        assert self.storage.current_task.previous_result == "Task completed successfully"
+        assert (
+            self.storage.current_task.previous_result == "Task completed successfully"
+        )
 
         # Check task in activity is also marked complete
         assert self.storage.current_activity is not None
@@ -188,7 +192,9 @@ class TestContextStorage:
         """Test adding context items"""
         # Set up context hierarchy
         self.storage.create_session("session_008", "Test", "Plan")
-        self.storage.create_activity("act_005", "Test", ["test"], "coder", "test", "Analysis")
+        self.storage.create_activity(
+            "act_005", "Test", ["test"], "coder", "test", "Analysis"
+        )
         self.storage.create_task("task_003", "Test task", ["test"])
 
         # Add context item
@@ -197,7 +203,7 @@ class TestContextStorage:
             "Implemented authentication middleware",
             ["auth", "middleware"],
             activity_id="act_005",
-            task_id="task_003"
+            task_id="task_003",
         )
 
         assert item.content == "Implemented authentication middleware"
@@ -239,9 +245,15 @@ class TestContextStorage:
     def test_get_context_by_tags(self):
         """Test getting context by tags"""
         # Add items with different tags
-        self.storage.add_context(ContextCategory.ACTIONS, "Auth action", ["auth", "security"])
-        self.storage.add_context(ContextCategory.DECISIONS, "API decision", ["api", "design"])
-        self.storage.add_context(ContextCategory.LEARNINGS, "Auth learning", ["auth", "lessons"])
+        self.storage.add_context(
+            ContextCategory.ACTIONS, "Auth action", ["auth", "security"]
+        )
+        self.storage.add_context(
+            ContextCategory.DECISIONS, "API decision", ["api", "design"]
+        )
+        self.storage.add_context(
+            ContextCategory.LEARNINGS, "Auth learning", ["auth", "lessons"]
+        )
 
         # Get items by tag
         auth_items = self.storage.get_context_by_tags(["auth"])
@@ -259,14 +271,13 @@ class TestContextStorage:
         """Test getting context by activity"""
         # Set up hierarchy and add context
         self.storage.create_session("session_009", "Test", "Plan")
-        self.storage.create_activity("act_006", "Test", ["test"], "coder", "test", "Analysis")
+        self.storage.create_activity(
+            "act_006", "Test", ["test"], "coder", "test", "Analysis"
+        )
         self.storage.create_task("task_004", "Test task", ["test"])
 
         self.storage.add_context(
-            ContextCategory.ACTIONS,
-            "Activity action",
-            ["test"],
-            activity_id="act_006"
+            ContextCategory.ACTIONS, "Activity action", ["test"], activity_id="act_006"
         )
 
         # Get context for activity
@@ -280,7 +291,7 @@ class TestContextStorage:
         self.storage.create_session(
             "session_010",
             "Build payment system",
-            "Implement payment processing with multiple providers"
+            "Implement payment processing with multiple providers",
         )
         self.storage.create_activity(
             "act_007",
@@ -288,12 +299,10 @@ class TestContextStorage:
             ["stripe", "payment"],
             "coder",
             "payment_service",
-            "Need to integrate Stripe API for payment processing"
+            "Need to integrate Stripe API for payment processing",
         )
         self.storage.create_task(
-            "task_005",
-            "Create payment handler",
-            ["payment", "handler"]
+            "task_005", "Create payment handler", ["payment", "handler"]
         )
 
         context = self.storage.build_hierarchical_context()
@@ -304,13 +313,19 @@ class TestContextStorage:
 
         # Check session data
         assert context["session"]["original_ask"] == "Build payment system"
-        assert context["session"]["high_level_plan"] == "Implement payment processing with multiple providers"
+        assert (
+            context["session"]["high_level_plan"]
+            == "Implement payment processing with multiple providers"
+        )
 
         # Check activity data
         assert context["activity"]["description"] == "Implement Stripe integration"
         assert context["activity"]["mode"] == "coder"
         assert context["activity"]["component"] == "payment_service"
-        assert context["activity"]["planner_analysis"] == "Need to integrate Stripe API for payment processing"
+        assert (
+            context["activity"]["planner_analysis"]
+            == "Need to integrate Stripe API for payment processing"
+        )
         assert context["activity"]["tags"] == ["stripe", "payment"]
 
         # Check task data
@@ -326,9 +341,16 @@ class TestContextStorage:
         assert stats["total_tasks"] == 0
         # Check specific expected keys that are actually returned by get_statistics()
         expected_keys = [
-            "total_sessions", "total_activities", "total_tasks",
-            "session_contexts", "activity_contexts", "task_contexts",
-            "decisions", "actions", "results", "learnings"
+            "total_sessions",
+            "total_activities",
+            "total_tasks",
+            "session_contexts",
+            "activity_contexts",
+            "task_contexts",
+            "decisions",
+            "actions",
+            "results",
+            "learnings",
         ]
 
         for key in expected_keys:
@@ -337,7 +359,9 @@ class TestContextStorage:
 
         # Add some data
         self.storage.create_session("session_011", "Test", "Plan")
-        self.storage.create_activity("act_008", "Test", ["test"], "coder", "test", "Analysis")
+        self.storage.create_activity(
+            "act_008", "Test", ["test"], "coder", "test", "Analysis"
+        )
         self.storage.create_task("task_006", "Test task", ["test"])
         self.storage.add_context(ContextCategory.ACTIONS, "Test action", ["test"])
         self.storage.add_context(ContextCategory.DECISIONS, "Test decision", ["test"])
@@ -353,7 +377,9 @@ class TestContextStorage:
         """Test clearing all context"""
         # Add some data
         self.storage.create_session("session_012", "Test", "Plan")
-        self.storage.create_activity("act_009", "Test", ["test"], "coder", "test", "Analysis")
+        self.storage.create_activity(
+            "act_009", "Test", ["test"], "coder", "test", "Analysis"
+        )
         self.storage.add_context(ContextCategory.ACTIONS, "Test action", ["test"])
 
         # Verify data exists
@@ -386,7 +412,9 @@ class TestContextStorage:
         # Create multiple threads
         threads = []
         for i in range(5):
-            thread = threading.Thread(target=create_session_with_id, args=(f"session_{i}",))
+            thread = threading.Thread(
+                target=create_session_with_id, args=(f"session_{i}",)
+            )
             threads.append(thread)
 
         # Start all threads
@@ -405,10 +433,14 @@ class TestContextStorage:
         """Test that context items persist when hierarchy changes"""
         # Create session and add context
         self.storage.create_session("session_013", "Test", "Plan")
-        self.storage.add_context(ContextCategory.DECISIONS, "Session decision", ["test"])
+        self.storage.add_context(
+            ContextCategory.DECISIONS, "Session decision", ["test"]
+        )
 
         # Create activity and add more context
-        self.storage.create_activity("act_010", "Test", ["test"], "coder", "test", "Analysis")
+        self.storage.create_activity(
+            "act_010", "Test", ["test"], "coder", "test", "Analysis"
+        )
         self.storage.add_context(ContextCategory.ACTIONS, "Activity action", ["test"])
 
         # Create task and add more context
@@ -421,7 +453,9 @@ class TestContextStorage:
         assert len(self.storage.context_db[ContextCategory.LEARNINGS]) == 1
 
         # Change current context
-        self.storage.create_activity("act_011", "New activity", ["new"], "coder", "new", "New analysis")
+        self.storage.create_activity(
+            "act_011", "New activity", ["new"], "coder", "new", "New analysis"
+        )
         self.storage.create_task("task_008", "New task", ["new"])
 
         # Verify old context items still exist

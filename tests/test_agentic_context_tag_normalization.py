@@ -5,9 +5,9 @@ Unit tests for agentic_context.retrieval.tag_normalization module
 import pytest
 
 from vivek.agentic_context.retrieval.tag_normalization import (
-    TagVocabulary,
-    TagNormalizer,
     TagDefinition,
+    TagNormalizer,
+    TagVocabulary,
 )
 
 
@@ -19,7 +19,7 @@ class TestTagDefinition:
         tag_def = TagDefinition(
             canonical="authentication",
             synonyms=["auth", "login"],
-            related=["security", "authorization"]
+            related=["security", "authorization"],
         )
 
         assert tag_def.canonical == "authentication"
@@ -48,9 +48,7 @@ class TestTagVocabulary:
     def test_add_tag(self):
         """Test adding a new tag"""
         self.vocabulary.add_tag(
-            "testing",
-            synonyms=["test", "unit-test"],
-            related=["quality", "validation"]
+            "testing", synonyms=["test", "unit-test"], related=["quality", "validation"]
         )
 
         # Check canonical form
@@ -250,7 +248,7 @@ class TestTagNormalizer:
             "",  # empty
             "   ",  # whitespace only
             "auth",  # duplicate
-            "AUTH"  # duplicate uppercase
+            "AUTH",  # duplicate uppercase
         ]
 
         cleaned = self.normalizer.clean_tags(dirty_tags)

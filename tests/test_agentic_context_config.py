@@ -2,11 +2,12 @@
 Unit tests for agentic_context.config module
 """
 
-import pytest
-import tempfile
 import json
-import yaml
+import tempfile
 from pathlib import Path
+
+import pytest
+import yaml
 
 from vivek.agentic_context.config import Config, get_config
 
@@ -43,13 +44,15 @@ class TestConfig:
     def test_from_preset_with_nested_overrides(self):
         """Test creating config with nested key overrides"""
         config = Config.from_preset(
-            "production",
-            **{"retrieval.max_results": 8, "semantic.model": "test-model"}
+            "production", **{"retrieval.max_results": 8, "semantic.model": "test-model"}
         )
         assert config["retrieval"]["max_results"] == 8
         assert config["semantic"]["model"] == "test-model"
 
-    @pytest.mark.parametrize("preset", ["development", "production", "fast", "accurate", "lightweight", "auto"])
+    @pytest.mark.parametrize(
+        "preset",
+        ["development", "production", "fast", "accurate", "lightweight", "auto"],
+    )
     def test_all_presets_valid(self, preset):
         """Test that all presets are valid"""
         config = Config.from_preset(preset)
@@ -68,17 +71,13 @@ class TestConfig:
 
     def test_validate_invalid_strategy(self):
         """Test validation fails for invalid strategy"""
-        config = {
-            "retrieval": {"strategy": "invalid_strategy"}
-        }
+        config = {"retrieval": {"strategy": "invalid_strategy"}}
         with pytest.raises(ValueError, match="Invalid strategy"):
             Config.validate(config)
 
     def test_validate_missing_semantic_for_embeddings(self):
         """Test validation fails when semantic config missing for embeddings strategy"""
-        config = {
-            "retrieval": {"strategy": "hybrid"}
-        }
+        config = {"retrieval": {"strategy": "hybrid"}}
         with pytest.raises(ValueError, match="requires 'semantic' configuration"):
             Config.validate(config)
 
@@ -86,7 +85,7 @@ class TestConfig:
         """Test saving and loading config as YAML"""
         config = Config.from_preset("fast", max_results=3)
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml_path = f.name
 
         try:
@@ -102,7 +101,7 @@ class TestConfig:
         """Test saving and loading config as JSON"""
         config = Config.from_preset("accurate", max_results=7)
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json_path = f.name
 
         try:

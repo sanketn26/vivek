@@ -2,21 +2,26 @@
 Tests for retrieval_strategies module
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
+from unittest.mock import Mock, patch
 
-from vivek.agentic_context.core.context_storage import ContextStorage, ContextItem, ContextCategory
+import pytest
+
+from vivek.agentic_context.core.context_storage import (
+    ContextCategory,
+    ContextItem,
+    ContextStorage,
+)
 from vivek.agentic_context.retrieval.retrieval_strategies import (
-    RetrievalStrategy,
-    RetrievalConfig,
-    RetrievalCache,
+    AutoRetriever,
     BaseRetriever,
-    TagBasedRetriever,
     EmbeddingBasedRetriever,
     HybridRetriever,
-    AutoRetriever,
-    RetrieverFactory
+    RetrievalCache,
+    RetrievalConfig,
+    RetrievalStrategy,
+    RetrieverFactory,
+    TagBasedRetriever,
 )
 
 
@@ -38,9 +43,7 @@ class TestRetrievalConfig:
     def test_custom_config(self):
         """Test custom configuration values"""
         config = RetrievalConfig(
-            strategy="tags_only",
-            max_results=10,
-            cache_enabled=False
+            strategy="tags_only", max_results=10, cache_enabled=False
         )
 
         assert config.strategy == "tags_only"
@@ -75,6 +78,7 @@ class TestRetrievalCache:
 
         # Mock time to simulate expiration
         import time
+
         original_time = time.time
         time.time = lambda: original_time() + 2  # 2 seconds later
 
@@ -115,14 +119,14 @@ class TestTagBasedRetriever:
                 content="Test content 1",
                 tags=["api", "authentication"],
                 category=ContextCategory.SESSION,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             ),
             ContextItem(
                 content="Test content 2",
                 tags=["database", "query"],
                 category=ContextCategory.TASK,
-                timestamp=datetime.now()
-            )
+                timestamp=datetime.now(),
+            ),
         ]
         context_storage.get_all_context_items.return_value = items
 
@@ -160,8 +164,7 @@ class TestRetrieverFactory:
         context_storage = Mock(spec=ContextStorage)
 
         retriever = RetrieverFactory.create_retriever(
-            context_storage,
-            {"strategy": "tags_only"}
+            context_storage, {"strategy": "tags_only"}
         )
 
         assert isinstance(retriever, TagBasedRetriever)
@@ -171,8 +174,7 @@ class TestRetrieverFactory:
         context_storage = Mock(spec=ContextStorage)
 
         retriever = RetrieverFactory.create_retriever(
-            context_storage,
-            {"strategy": "hybrid"}
+            context_storage, {"strategy": "hybrid"}
         )
 
         assert isinstance(retriever, HybridRetriever)
@@ -194,8 +196,7 @@ class TestRetrieverFactory:
 
         with pytest.raises(ValueError, match="Unknown retrieval strategy"):
             RetrieverFactory.create_retriever(
-                context_storage,
-                {"strategy": "unknown_strategy"}
+                context_storage, {"strategy": "unknown_strategy"}
             )
 
     def test_get_available_strategies(self):
@@ -214,10 +215,14 @@ class TestErrorHandling:
         context_storage = Mock(spec=ContextStorage)
 
         # Mock ImportError in EmbeddingModel
-        with patch('vivek.agentic_context.retrieval.retrieval_strategies.EmbeddingModel') as mock_model:
+        with patch(
+            "vivek.agentic_context.retrieval.retrieval_strategies.EmbeddingModel"
+        ) as mock_model:
             mock_model.side_effect = ImportError("sentence-transformers not installed")
 
-            with pytest.raises(ImportError, match="Failed to initialize EmbeddingBasedRetriever"):
+            with pytest.raises(
+                ImportError, match="Failed to initialize EmbeddingBasedRetriever"
+            ):
                 EmbeddingBasedRetriever(context_storage, {})
 
     def test_retrieval_error_handling(self):
