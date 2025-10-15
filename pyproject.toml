@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vivek"
-version = "0.1.0"
+version = "2.0.0"
 requires-python = ">=3.11"
 description = "Privacy-first collaborative AI brain design for intelligent coding assistance"
 readme = "README.md"
@@ -58,7 +58,7 @@ dev = [
 ]
 
 [project.scripts]
-vivek = "vivek.cli:cli"
+vivek = "src.vivek.cli:cli"
 
 [project.urls]
 Homepage = "https://github.com/sanketn26/vivek"
@@ -68,10 +68,13 @@ Documentation = "https://github.com/sanketn26/vivek#readme"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["vivek"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["vivek*"]
 
 [tool.setuptools.package-data]
-vivek = ["*.md", "*.yml", "*.yaml"]
+"vivek" = ["*.md", "*.yml", "*.yaml"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"

@@ -76,7 +76,7 @@ clean-venv: ## Remove virtual environment
 format: ## Format code with black and isort
 	@echo "🎨 Formatting code..."
 	@if [ -d "venv" ]; then \
-		./venv/bin/black vivek/ tests/ --line-length 88 2>/dev/null || echo "⚠️  black not installed, run 'make install-dev'"; \
+		./venv/bin/black src/ tests/ --line-length 88 2>/dev/null || echo "⚠️  black not installed, run 'make install-dev'"; \
 	else \
 		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
 		exit 1; \
@@ -86,7 +86,7 @@ format: ## Format code with black and isort
 lint: ## Lint code with flake8
 	@echo "🔍 Linting code..."
 	@if [ -d "venv" ]; then \
-		./venv/bin/flake8 vivek/ tests/ --max-line-length 88 --extend-ignore E203,W503 2>/dev/null || echo "⚠️  flake8 not installed, run 'make install-dev'"; \
+		./venv/bin/flake8 src/ tests/ --max-line-length 88 --extend-ignore E203,W503 2>/dev/null || echo "⚠️  flake8 not installed, run 'make install-dev'"; \
 	else \
 		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
 		exit 1; \
@@ -96,7 +96,7 @@ lint: ## Lint code with flake8
 type-check: ## Type check with mypy
 	@echo "🔎 Type checking..."
 	@if [ -d "venv" ]; then \
-		./venv/bin/mypy vivek/ --ignore-missing-imports 2>/dev/null || echo "⚠️  mypy not installed, run 'make install-dev'"; \
+		./venv/bin/mypy src/ --ignore-missing-imports 2>/dev/null || echo "⚠️  mypy not installed, run 'make install-dev'"; \
 	else \
 		echo "❌ Virtual environment not found. Run 'make install-dev' first"; \
 		exit 1; \
@@ -107,7 +107,7 @@ test: ## Run tests with pytest
 	@echo "🧪 Running tests..."
 	@if [ -d "venv" ]; then \
 		if ./venv/bin/pip show pytest-cov >/dev/null 2>&1; then \
-			./venv/bin/pytest tests/ -v --cov=vivek --cov-report=html --cov-report=term; \
+			./venv/bin/pytest tests/ -v --cov=src --cov-report=html --cov-report=term; \
 		else \
 			echo "⚠️  pytest-cov not installed, running tests without coverage..."; \
 			./venv/bin/pytest tests/ -v; \
@@ -158,7 +158,7 @@ setup: ## Setup development environment
 
 run: ## Run the Vivek CLI application
 	@echo "🤖 Starting Vivek AI Assistant..."
-	./venv/bin/vivek --help
+	PYTHONPATH=$(shell pwd)/src ./venv/bin/python src/vivek/cli.py --help
 
 check-ollama: ## Check if Ollama is running
 	@echo "🔍 Checking Ollama status..."

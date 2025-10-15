@@ -118,8 +118,6 @@ class TestWorkflowCompatibilityLayer:
         self.integration_manager.structured_planner.analyze_request.assert_called_once()
 
 
-
-
 class TestWorkflowRecommendations:
     """Test cases for workflow recommendations"""
 
