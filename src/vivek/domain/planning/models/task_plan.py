@@ -5,45 +5,91 @@ TaskPlan domain model - represents a plan for completing tasks.
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
 
-# Import with path setup for execution context
-import sys
-from pathlib import Path
+from vivek.domain.workflow.models.task import Task, TaskStatus
 
-# Add the src directory to Python path
-src_path = Path(__file__).parent.parent.parent.parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
 
-from domain.workflow.models.work_item import WorkItem
+class PlanStatus(Enum):
+    """Plan execution states."""
+
+    DRAFT = "draft"
+    APPROVED = "approved"
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 @dataclass
 class TaskPlan:
-    """A simple plan for completing tasks."""
+    """A plan for executing multiple tasks in order."""
 
     id: str
     description: str
-    work_items: List[WorkItem] = field(default_factory=list)
+    tasks: List[Task] = field(default_factory=list)
     created_at: Optional[datetime] = None
-    status: str = "draft"  # draft, approved, executing, completed
+    status: PlanStatus = PlanStatus.DRAFT
 
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now()
 
-    def add_work_item(self, work_item: WorkItem):
-        """Add a work item to the plan."""
-        self.work_items.append(work_item)
+    def add_task(self, task: Task) -> None:
+        """Add a task to the plan."""
+        self.tasks.append(task)
 
-    def get_executable_items(self, completed_items: List[str]) -> List[WorkItem]:
-        """Get work items that can be executed now."""
-        return [item for item in self.work_items if item.can_execute(completed_items)]
+    def get_executable_tasks(self, completed_task_ids: List[str]) -> List[Task]:
+        """
+        Get tasks that can be executed now.
+
+        Args:
+            completed_task_ids: List of task IDs that are completed
+
+        Returns:
+            List of tasks ready to execute
+        """
+        return [task for task in self.tasks if task.can_execute(completed_task_ids)]
 
     def is_completed(self) -> bool:
-        """Check if all work items are completed."""
-        return all(item.status == "completed" for item in self.work_items)
+        """Check if all tasks in the plan are completed."""
+        if not self.tasks:
+            return False
+        return all(task.status == TaskStatus.COMPLETED for task in self.tasks)
 
     def get_pending_count(self) -> int:
-        """Get count of pending work items."""
-        return len([item for item in self.work_items if item.status == "pending"])
+        """Get count of pending tasks."""
+        return len([task for task in self.tasks if task.status == TaskStatus.PENDING])
+
+    def get_completed_count(self) -> int:
+        """Get count of completed tasks."""
+        return len(
+            [task for task in self.tasks if task.status == TaskStatus.COMPLETED]
+        )
+
+    def get_failed_count(self) -> int:
+        """Get count of failed tasks."""
+        return len([task for task in self.tasks if task.status == TaskStatus.FAILED])
+
+    def approve(self) -> None:
+        """Approve the plan for execution."""
+        if self.status != PlanStatus.DRAFT:
+            raise ValueError(f"Cannot approve plan in {self.status.value} state")
+        self.status = PlanStatus.APPROVED
+
+    def start_execution(self) -> None:
+        """Start executing the plan."""
+        if self.status != PlanStatus.APPROVED:
+            raise ValueError(
+                f"Cannot start execution of plan in {self.status.value} state"
+            )
+        self.status = PlanStatus.EXECUTING
+
+    def mark_completed(self) -> None:
+        """Mark the plan as completed."""
+        if not self.is_completed():
+            raise ValueError("Cannot mark plan as completed when tasks are pending")
+        self.status = PlanStatus.COMPLETED
+
+    def mark_failed(self) -> None:
+        """Mark the plan as failed."""
+        self.status = PlanStatus.FAILED

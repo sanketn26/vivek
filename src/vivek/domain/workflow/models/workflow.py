@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
-from .task import Task
+from .task import Task, TaskStatus
 
 
 class WorkflowStatus(Enum):
@@ -40,15 +40,15 @@ class Workflow:
 
     def get_pending_tasks(self) -> List[Task]:
         """Get all pending tasks."""
-        return [task for task in self.tasks if task.status == "pending"]
+        return [task for task in self.tasks if task.status == TaskStatus.PENDING]
 
     def get_completed_tasks(self) -> List[Task]:
         """Get all completed tasks."""
-        return [task for task in self.tasks if task.status == "completed"]
+        return [task for task in self.tasks if task.status == TaskStatus.COMPLETED]
 
     def is_completed(self) -> bool:
         """Check if workflow is completed."""
-        return all(task.status == "completed" for task in self.tasks)
+        return all(task.status == TaskStatus.COMPLETED for task in self.tasks)
 
     def mark_completed(self):
         """Mark workflow as completed."""

@@ -3,69 +3,148 @@ Planning domain service - creates and manages task plans.
 """
 
 from typing import List, Optional
-from ..models.task_plan import TaskPlan
-
-# Import with path setup for execution context
-import sys
-from pathlib import Path
-
-# Add the src directory to Python path
-src_path = Path(__file__).parent.parent.parent.parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
-from domain.workflow.models.work_item import WorkItem
+from vivek.domain.planning.models.task_plan import TaskPlan
+from vivek.domain.planning.repositories.plan_repository import PlanRepository
+from vivek.domain.workflow.models.task import Task
 
 
 class PlanningService:
-    """Simple service that creates task plans."""
+    """Service for creating and managing task plans."""
 
-    def __init__(self):
-        """Initialize with empty plan list."""
-        self.plans: List[TaskPlan] = []
+    def __init__(self, repository: PlanRepository):
+        """
+        Initialize with repository.
+
+        Args:
+            repository: Plan repository for persistence
+        """
+        self.repository = repository
 
     def create_plan(self, id: str, description: str) -> TaskPlan:
-        """Create a new task plan."""
+        """
+        Create a new task plan.
+
+        Args:
+            id: Unique plan identifier
+            description: Plan description
+
+        Returns:
+            Created plan
+
+        Raises:
+            ValueError: If plan with ID already exists
+        """
+        if not id or not id.strip():
+            raise ValueError("Plan ID cannot be empty")
+        if not description or not description.strip():
+            raise ValueError("Plan description cannot be empty")
+
+        # Check if plan already exists
+        existing = self.repository.get_by_id(id)
+        if existing:
+            raise ValueError(f"Plan with ID '{id}' already exists")
+
         plan = TaskPlan(id=id, description=description)
-        self.plans.append(plan)
+        self.repository.save(plan)
         return plan
 
     def get_plan(self, plan_id: str) -> Optional[TaskPlan]:
-        """Get a plan by ID."""
-        return next((plan for plan in self.plans if plan.id == plan_id), None)
+        """
+        Get a plan by ID.
 
-    def add_work_item_to_plan(self, plan_id: str, work_item: WorkItem) -> bool:
-        """Add a work item to a plan."""
-        plan = self.get_plan(plan_id)
+        Args:
+            plan_id: Plan identifier
+
+        Returns:
+            Plan if found, None otherwise
+        """
+        return self.repository.get_by_id(plan_id)
+
+    def add_task_to_plan(self, plan_id: str, task: Task) -> bool:
+        """
+        Add a task to a plan.
+
+        Args:
+            plan_id: Plan identifier
+            task: Task to add
+
+        Returns:
+            True if successful, False if plan not found
+        """
+        plan = self.repository.get_by_id(plan_id)
         if plan:
-            plan.add_work_item(work_item)
+            plan.add_task(task)
+            self.repository.save(plan)  # Persist changes
             return True
         return False
 
-    def get_executable_work_items(
-        self, plan_id: str, completed_items: List[str]
-    ) -> List[WorkItem]:
-        """Get work items that can be executed now."""
-        plan = self.get_plan(plan_id)
+    def get_executable_tasks(
+        self, plan_id: str, completed_task_ids: List[str]
+    ) -> List[Task]:
+        """
+        Get tasks that can be executed now.
+
+        Args:
+            plan_id: Plan identifier
+            completed_task_ids: List of completed task IDs
+
+        Returns:
+            List of executable tasks
+        """
+        plan = self.repository.get_by_id(plan_id)
         if plan:
-            return plan.get_executable_items(completed_items)
+            return plan.get_executable_tasks(completed_task_ids)
         return []
 
     def mark_plan_completed(self, plan_id: str) -> bool:
-        """Mark a plan as completed if all work items are done."""
-        plan = self.get_plan(plan_id)
+        """
+        Mark a plan as completed if all tasks are done.
+
+        Args:
+            plan_id: Plan identifier
+
+        Returns:
+            True if marked completed, False otherwise
+        """
+        plan = self.repository.get_by_id(plan_id)
         if plan and plan.is_completed():
-            plan.status = "completed"
+            plan.mark_completed()
+            self.repository.save(plan)  # Persist changes
             return True
         return False
 
-    def get_pending_work_count(self, plan_id: str) -> int:
-        """Get count of pending work items in a plan."""
-        plan = self.get_plan(plan_id)
+    def get_pending_task_count(self, plan_id: str) -> int:
+        """
+        Get count of pending tasks in a plan.
+
+        Args:
+            plan_id: Plan identifier
+
+        Returns:
+            Count of pending tasks
+        """
+        plan = self.repository.get_by_id(plan_id)
         if plan:
             return plan.get_pending_count()
         return 0
 
     def get_all_plans(self) -> List[TaskPlan]:
-        """Get all plans."""
-        return self.plans.copy()
+        """
+        Get all plans.
+
+        Returns:
+            List of all plans
+        """
+        return self.repository.get_all()
+
+    def delete_plan(self, plan_id: str) -> bool:
+        """
+        Delete a plan.
+
+        Args:
+            plan_id: Plan identifier
+
+        Returns:
+            True if deleted, False if not found
+        """
+        return self.repository.delete(plan_id)

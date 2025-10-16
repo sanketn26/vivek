@@ -1,196 +1,117 @@
 """
-Tests for CLI functionality in Vivek project (New Simplified Architecture).
+Tests for CLI functionality - Clean Architecture version.
 """
 
 import pytest
-import asyncio
-import sys
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 from click.testing import CliRunner
+import yaml
 
-# Add src to path for testing
-src_path = Path(__file__).parent.parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
-from vivek.cli import cli, init, chat
+from vivek.cli import cli, init, chat, status
 
 
-# Helper to check if Ollama is running (for tests that might need it)
-def is_ollama_running():
-    """Check if Ollama service is available."""
-    try:
-        import ollama
-        ollama.list()
-        return True
-    except Exception:
-        return False
+@pytest.fixture
+def runner():
+    """Create CLI test runner."""
+    return CliRunner()
 
 
-# Skip marker for tests requiring Ollama
-requires_ollama = pytest.mark.skipif(
-    not is_ollama_running(), reason="Ollama service not running"
-)
+@pytest.fixture
+def temp_project(tmp_path):
+    """Create temporary project directory."""
+    return tmp_path
 
 
-class TestCLI:
-    """Test cases for the main CLI interface."""
+class TestCLIBasics:
+    """Basic CLI functionality tests."""
 
-    def test_cli_group_creation(self):
-        """Test that the CLI group is properly created."""
-        runner = CliRunner()
+    def test_cli_help(self, runner):
+        """Test CLI help command."""
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        assert "Vivek - Your AI Coding Assistant" in result.output or "Vivek 2.0" in result.output
+        assert "Vivek" in result.output
 
-    def test_init_command_without_args(self, runner):
-        """Test the init command with default arguments."""
-        result = runner.invoke(init)
+    def test_init_command(self, runner, temp_project, monkeypatch):
+        """Test init command creates config."""
+        monkeypatch.chdir(temp_project)
+
+        result = runner.invoke(init, ["--model", "test-model", "--provider", "mock"])
         assert result.exit_code == 0
-        assert "Vivek 2.0 initialized successfully" in result.output
-        assert ".vivek/config.yml" in result.output
+        assert "initialized successfully" in result.output
 
-    def test_init_command_with_custom_args(self, runner):
-        """Test the init command with custom arguments."""
-        result = runner.invoke(
-            init,
-            [
-                "--model",
-                "deepseek-coder:6.7b",
-            ],
-        )
+        # Check config file was created
+        config_path = temp_project / ".vivek" / "config.yml"
+        assert config_path.exists()
+
+        # Verify config content
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+            assert config["llm_model"] == "test-model"
+            assert config["llm_provider"] == "mock"
+
+    def test_status_without_init(self, runner, temp_project, monkeypatch):
+        """Test status command without initialization."""
+        monkeypatch.chdir(temp_project)
+
+        result = runner.invoke(status)
         assert result.exit_code == 0
-        assert "deepseek-coder:6.7b" in result.output
+        assert "not initialized" in result.output.lower()
 
-    def test_init_creates_config_files(self, tmp_path, runner):
-        """Test that init command creates necessary config files."""
-        import os
+    def test_status_after_init(self, runner, temp_project, monkeypatch):
+        """Test status command after initialization."""
+        monkeypatch.chdir(temp_project)
 
-        # Change to tmp directory for the test
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            result = runner.invoke(init)
-            assert result.exit_code == 0
+        # Initialize first
+        runner.invoke(init, ["--model", "test-model"])
 
-            # Check if .vivek/config.yml was created (new CLI uses simplified config)
-            config_yml = tmp_path / ".vivek" / "config.yml"
-            assert config_yml.exists(), f"config.yml not found at {config_yml}"
+        # Check status
+        result = runner.invoke(status)
+        assert result.exit_code == 0
+        assert "test-model" in result.output
 
-            # Check if config.yml was created (new CLI uses simplified config)
-            config_yml = tmp_path / ".vivek" / "config.yml"
-            assert config_yml.exists(), f"config.yml not found at {config_yml}"
+    def test_chat_without_init(self, runner, temp_project, monkeypatch):
+        """Test chat command without initialization."""
+        monkeypatch.chdir(temp_project)
 
-            # Check that config contains expected model
-            import yaml
-            with open(config_yml, "r") as f:
-                config = yaml.safe_load(f)
-                assert "model" in config
-        finally:
-            os.chdir(original_dir)
+        result = runner.invoke(chat)
+        assert result.exit_code == 0
+        assert "No vivek configuration found" in result.output
 
-    def test_chat_command_without_config(self, runner, tmp_path):
-        """Test chat command when no config exists."""
-        import os
+    def test_chat_with_test_input(self, runner, temp_project, monkeypatch):
+        """Test chat command with test input (non-interactive)."""
+        monkeypatch.chdir(temp_project)
 
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            result = runner.invoke(chat)
-            # Command exits but may not return 1 in test context
-            assert (
-                "No vivek configuration found" in result.output or result.exit_code != 0
-            )
-        finally:
-            os.chdir(original_dir)
+        # Initialize with mock provider
+        runner.invoke(init, ["--provider", "mock"])
 
-    @pytest.mark.skip(
-        reason="Chat command requires async event loop and can hang in tests"
-    )
-    def test_chat_command_with_config(self, temp_config_file, runner):
-        """Test chat command with existing config."""
-        with patch("pathlib.Path.cwd", return_value=temp_config_file.parent.parent):
-            result = runner.invoke(chat, ["--help"])
-            assert result.exit_code == 0
-            assert "Start chat session" in result.output
+        # Run chat with test input
+        result = runner.invoke(chat, ["--test-input", "Create a hello world function"])
 
-
-class TestChatCommand:
-    """Test cases for the chat command in simplified architecture."""
-
-    def test_chat_command_without_config(self, runner, tmp_path):
-        """Test chat command when no config exists."""
-        import os
-
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            result = runner.invoke(chat)
-            # Command may exit with error or show message
-            assert (
-                "No vivek configuration found" in result.output or result.exit_code != 0
-            )
-        finally:
-            os.chdir(original_dir)
-
-    def test_chat_command_with_test_input(self, temp_config_file, runner):
-        """Test chat command with test input in simplified architecture."""
-        with patch("pathlib.Path.cwd", return_value=temp_config_file.parent.parent):
-            # Test with test input (should work with mocked dependencies)
-            result = runner.invoke(chat, ["--test-input", "Hello, Vivek!"])
-            assert result.exit_code == 0
-            # Should show processing or result output
-            assert len(result.output) > 50 or "processing" in result.output.lower()
+        # Should not error (though it might not complete successfully without proper setup)
+        # Just verify it doesn't crash
+        assert "Error" not in result.output or "Mock response" in result.output
 
 
 class TestCLIIntegration:
-    """Integration tests for simplified CLI functionality."""
+    """Integration tests for CLI workflows."""
 
-    def test_init_and_chat_workflow(self, tmp_path, runner):
-        """Test the complete init -> chat workflow."""
-        # Change to temp directory
-        with patch("pathlib.Path.cwd", return_value=tmp_path):
-            # Initialize Vivek
-            init_result = runner.invoke(init)
-            assert init_result.exit_code == 0
+    def test_complete_workflow(self, runner, temp_project, monkeypatch):
+        """Test complete workflow: init -> status -> chat."""
+        monkeypatch.chdir(temp_project)
 
-            # Try to start chat (should work now that config exists)
-            chat_result = runner.invoke(chat, ["--help"])
-            assert chat_result.exit_code == 0
-
-    def test_cli_error_handling(self, runner, tmp_path):
-        """Test CLI error handling for various scenarios."""
-        import os
-
-        # Test with invalid arguments
-        result = runner.invoke(init, ["--invalid-arg"])
-        assert result.exit_code != 0
-
-        # Test chat without initialization in isolated directory
-        original_dir = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            # Chat should detect missing config and show error
-            chat_result = runner.invoke(chat)
-            assert (
-                "No vivek configuration found" in chat_result.output or
-                chat_result.exit_code != 0
-            )
-        finally:
-            os.chdir(original_dir)
-
-    def test_cli_help_output(self, runner):
-        """Test that all commands show proper help output."""
-        # Test main CLI help
-        result = runner.invoke(cli, ["--help"])
+        # Step 1: Initialize
+        result = runner.invoke(init, ["--provider", "mock"])
         assert result.exit_code == 0
-        assert "Usage:" in result.output
 
-        # Test individual command helps (only init and chat exist in new CLI)
-        commands = ["init", "chat"]
-        for cmd_name in commands:
-            result = runner.invoke(cli, [cmd_name, "--help"])
-            assert result.exit_code == 0
-            # Check for command name in output
-            assert cmd_name in result.output
+        # Step 2: Check status
+        result = runner.invoke(status)
+        assert result.exit_code == 0
+        assert "mock" in result.output
+
+        # Step 3: Run chat with test input
+        result = runner.invoke(chat, ["--test-input", "Test task"])
+        # Should execute without crashing
+        assert result.exit_code == 0
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

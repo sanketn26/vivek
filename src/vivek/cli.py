@@ -1,4 +1,9 @@
-# vivek/new_cli.py - Simplified CLI using new architecture
+"""
+Vivek CLI - Clean, simple command-line interface.
+
+No path hacks. Uses proper package imports and DI container.
+"""
+
 import asyncio
 import click
 from rich.console import Console
@@ -9,52 +14,46 @@ from pathlib import Path
 from typing import Optional
 import yaml
 
-# Import new simplified architecture components
-import sys
-from pathlib import Path
-
-# Add the src directory to Python path for direct execution
-src_path = Path(__file__).parent.parent.parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
-from application.orchestrators.simple_orchestrator import SimpleOrchestrator
-from application.services.vivek_application_service import VivekApplicationService
-from domain.workflow.services.workflow_service import WorkflowService
-from domain.planning.services.planning_service import PlanningService
-from infrastructure.llm.llm_provider import LLMProvider
-from infrastructure.persistence.state_repository import StateRepository
+from vivek.infrastructure.di_container import ServiceContainer
+from vivek.application.orchestrators.simple_orchestrator import SimpleOrchestrator
+from vivek.application.services.vivek_application_service import VivekApplicationService
 
 console = Console()
 
 
 @click.group()
 def cli():
-    """🤖 Vivek - Your AI Coding Assistant (Simplified Architecture)"""
+    """Vivek - Your AI Coding Assistant (Clean Architecture)"""
     pass
 
 
 @cli.command()
 @click.option("--model", default="qwen2.5-coder:7b", help="LLM model name")
-def init(model):
+@click.option("--provider", default="ollama", help="LLM provider (ollama/mock)")
+def init(model: str, provider: str):
     """Initialize Vivek in current project"""
 
-    config = {"model": model, "version": "2.0-simplified"}
+    config = {
+        "llm_model": model,
+        "llm_provider": provider,
+        "state_storage": "file",
+        "state_dir": ".vivek/state",
+        "version": "3.0-clean",
+    }
 
     config_path = Path("./.vivek/config.yml")
-    config_path.parent.mkdir(exist_ok=True)
-
-    import yaml
+    config_path.parent.mkdir(exist_ok=True, parents=True)
 
     with open(config_path, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
     console.print(
         Panel(
-            f"✅ Vivek 2.0 initialized successfully!\n\n"
+            f"✅ Vivek initialized successfully!\n\n"
             f"📁 Config saved to: {config_path}\n"
-            f"🧠 Model: {model}\n\n"
-            f"Run 'python -m src.vivek.cli chat' to start coding!",
+            f"🧠 Model: {model}\n"
+            f"🔌 Provider: {provider}\n\n"
+            f"Run 'vivek chat' to start coding!",
             title="🤖 Vivek Setup Complete",
             style="green",
         )
@@ -62,47 +61,46 @@ def init(model):
 
 
 @cli.command()
-@click.option("--model", help="Override model")
+@click.option("--model", help="Override model from config")
 @click.option("--test-input", help="Test input for non-interactive mode")
-def chat(model, test_input):
+def chat(model: Optional[str], test_input: Optional[str]):
     """Start chat session"""
 
     # Load config
     config_path = Path("./.vivek/config.yml")
     if not config_path.exists():
         console.print(
-            "❌ No vivek configuration found. Run 'python -m src.vivek.cli init' first.",
-            style="red",
+            "❌ No vivek configuration found. Run 'vivek init' first.", style="red"
         )
         return
 
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    # Use provided model or config default
-    selected_model = model or config.get("model", "qwen2.5-coder:7b")
+    # Override model if provided
+    if model:
+        config["llm_model"] = model
 
-    # Create simplified architecture components
-    workflow_service = WorkflowService()
-    planning_service = PlanningService()
-    llm_provider = MockLLMProvider()  # We'll create this
-    state_repository = MockStateRepository()  # We'll create this
+    # Create service container with config
+    container = ServiceContainer(config)
 
+    # Build application service
     app_service = VivekApplicationService(
-        workflow_service=workflow_service,
-        planning_service=planning_service,
-        llm_provider=llm_provider,
-        state_repository=state_repository,
+        workflow_service=container.get_workflow_service(),
+        planning_service=container.get_planning_service(),
+        llm_provider=container.get_llm_provider(),
+        state_repository=container.get_state_repository(),
     )
 
+    # Create orchestrator
     orchestrator = SimpleOrchestrator(app_service)
 
     console.print(
         Panel(
-            f"🤖 **Vivek 2.0 - Simplified Architecture**\n\n"
-            f"🧠 Model: {selected_model}\n"
-            f"📁 Project: {Path.cwd().name}\n"
-            f"🔧 Architecture: Domain-Driven Design\n\n"
+            f"🤖 **Vivek - Clean Architecture**\n\n"
+            f"🧠 Model: {config.get('llm_model', 'unknown')}\n"
+            f"🔌 Provider: {config.get('llm_provider', 'unknown')}\n"
+            f"📁 Project: {Path.cwd().name}\n\n"
             f"Type your request to begin!",
             title="🚀 Vivek Chat Session",
             style="blue",
@@ -111,14 +109,19 @@ def chat(model, test_input):
 
     # Test mode or interactive mode
     if test_input:
-        result = orchestrator.process_user_request(test_input)
-        console.print(
-            Panel(
-                Markdown(result.get("output", "No output")),
-                title="✅ Result",
-                style="green",
+        try:
+            result = orchestrator.process_user_request(test_input)
+            console.print(
+                Panel(
+                    f"Status: {result['status']}\n"
+                    f"Tasks executed: {result['tasks_executed']}\n"
+                    f"Workflow: {result['workflow_id']}",
+                    title="✅ Result",
+                    style="green",
+                )
             )
-        )
+        except Exception as e:
+            console.print(f"❌ Error: {str(e)}", style="red")
     else:
         asyncio.run(chat_loop(orchestrator))
 
@@ -136,15 +139,31 @@ async def chat_loop(orchestrator: SimpleOrchestrator):
                 console.print("👋 Thanks for using Vivek!", style="yellow")
                 break
 
-            with console.status("[bold green]🤖 Vivek is thinking...", spinner="dots"):
+            with console.status(
+                "[bold green]🤖 Vivek is thinking...", spinner="dots"
+            ):
                 result = orchestrator.process_user_request(user_input)
 
             if result["status"] == "completed":
+                # Format results
+                output_lines = [
+                    f"**Workflow**: {result['workflow_id']}",
+                    f"**Tasks Executed**: {result['tasks_executed']}",
+                    "",
+                    "**Results**:",
+                ]
+
+                for i, task_result in enumerate(result["results"], 1):
+                    status_emoji = "✅" if task_result["status"] == "completed" else "❌"
+                    output_lines.append(
+                        f"{i}. {status_emoji} {task_result.get('task_id', 'unknown')}: {task_result.get('status', 'unknown')}"
+                    )
+                    if "result" in task_result:
+                        output_lines.append(f"   {task_result['result'][:100]}...")
+
                 console.print(
                     Panel(
-                        Markdown(result.get("output", "No output")),
-                        title="🤖 Vivek",
-                        style="cyan",
+                        "\n".join(output_lines), title="🤖 Vivek", style="cyan"
                     )
                 )
             else:
@@ -159,36 +178,29 @@ async def chat_loop(orchestrator: SimpleOrchestrator):
             console.print(f"❌ Error: {str(e)}", style="red")
 
 
-# Mock classes for demonstration - in real implementation these would be proper implementations
-class MockLLMProvider(LLMProvider):
-    def __init__(self):
-        super().__init__("mock-model")
+@cli.command()
+def status():
+    """Show Vivek status and configuration"""
+    config_path = Path("./.vivek/config.yml")
 
-    def generate(self, prompt: str, temperature: float = 0.7) -> str:
-        return f"Mock response to: {prompt[:50]}..."
+    if not config_path.exists():
+        console.print("❌ Vivek not initialized in this project", style="red")
+        return
 
-    def is_available(self) -> bool:
-        return True
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
 
-
-class MockStateRepository(StateRepository):
-    def __init__(self):
-        self.storage = {}
-
-    def save_state(self, thread_id: str, state: dict) -> None:
-        self.storage[thread_id] = state
-
-    def load_state(self, thread_id: str) -> dict | None:
-        return self.storage.get(thread_id)
-
-    def delete_state(self, thread_id: str) -> bool:
-        if thread_id in self.storage:
-            del self.storage[thread_id]
-            return True
-        return False
-
-    def list_threads(self) -> list[str]:
-        return list(self.storage.keys())
+    console.print(
+        Panel(
+            f"**Model**: {config.get('llm_model', 'unknown')}\n"
+            f"**Provider**: {config.get('llm_provider', 'unknown')}\n"
+            f"**Version**: {config.get('version', 'unknown')}\n"
+            f"**State Storage**: {config.get('state_storage', 'unknown')}\n"
+            f"**Config**: {config_path}",
+            title="📊 Vivek Status",
+            style="blue",
+        )
+    )
 
 
 if __name__ == "__main__":
