@@ -1,18 +1,28 @@
 """
-Pytest configuration and fixtures for Vivek project tests.
+Pytest configuration and fixtures for Vivek project tests (New Architecture).
 """
 
 import pytest
 import asyncio
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 from typing import Dict, Any
 from click.testing import CliRunner
 
-from vivek.core.langgraph_orchestrator import LangGraphVivekOrchestrator
-from vivek.llm.planner import PlannerModel
-from vivek.llm.provider import OllamaProvider
-from vivek.llm.executor import BaseExecutor, get_executor
+# Add src to path for testing
+src_path = Path(__file__).parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import new simplified architecture components
+from vivek.application.orchestrators.simple_orchestrator import SimpleOrchestrator
+from vivek.application.services.vivek_application_service import VivekApplicationService
+from vivek.domain.workflow.services.workflow_service import WorkflowService
+from vivek.domain.planning.services.planning_service import PlanningService
+from vivek.infrastructure.llm.llm_provider import LLMProvider
+from vivek.infrastructure.persistence.state_repository import StateRepository
+from vivek.domain.workflow.models.task import Task
 
 
 @pytest.fixture
@@ -22,23 +32,30 @@ def project_root(tmp_path) -> Path:
 
 
 @pytest.fixture
-def mock_ollama_provider() -> Mock:
-    """Create a mock OllamaProvider for testing."""
-    mock_provider = Mock(spec=OllamaProvider)
+def mock_llm_provider() -> Mock:
+    """Create a mock LLMProvider for testing."""
+    mock_provider = Mock(spec=LLMProvider)
     mock_provider.generate.return_value = "Mock response from LLM"
+    mock_provider.is_available.return_value = True
+    mock_provider.model_name = "test-model"
     return mock_provider
 
 
 @pytest.fixture
-def planner_model(mock_ollama_provider) -> PlannerModel:
-    """Create a PlannerModel with mocked provider."""
-    return PlannerModel(mock_ollama_provider)
+def mock_state_repository() -> Mock:
+    """Create a mock StateRepository for testing."""
+    mock_repo = Mock(spec=StateRepository)
+    mock_repo.save_state.return_value = None
+    mock_repo.load_state.return_value = None
+    mock_repo.delete_state.return_value = True
+    mock_repo.list_threads.return_value = []
+    return mock_repo
 
 
 @pytest.fixture
-def executor_model(mock_ollama_provider) -> BaseExecutor:
-    """Create an ExecutorModel with mocked provider."""
-    return get_executor("sdet", mock_ollama_provider)
+def sample_task() -> Task:
+    """Create a sample Task for testing."""
+    return Task(id="test_task_1", description="Create unit tests for the project")
 
 
 @pytest.fixture
@@ -52,14 +69,14 @@ def sample_task_plan() -> Dict[str, Any]:
                 "mode": "sdet",
                 "file_path": "tests/test_orchestrator.py",
                 "file_status": "new",
-                "description": "Create unit tests for langgraph_orchestrator.py with pytest",
+                "description": "Create unit tests for simple_orchestrator.py with pytest",
                 "dependencies": [],
             },
             {
                 "mode": "sdet",
                 "file_path": "tests/test_models.py",
                 "file_status": "existing",
-                "description": "Add additional test cases for models.py",
+                "description": "Add additional test cases for new architecture",
                 "dependencies": [],
             },
         ],
@@ -79,22 +96,32 @@ def sample_review_result() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_orchestrator(mock_ollama_provider, project_root) -> LangGraphVivekOrchestrator:
-    """Create a LangGraphVivekOrchestrator with mocked dependencies."""
-    from unittest.mock import patch
+def workflow_service() -> WorkflowService:
+    """Create a WorkflowService for testing."""
+    return WorkflowService()
 
-    with patch("vivek.core.langgraph_orchestrator.OllamaProvider"):
-        orchestrator = LangGraphVivekOrchestrator(
-            project_root=str(project_root),
-            planner_model="test-model",
-            executor_model="test-model",
-        )
 
-        # Mock the planner and executor models to avoid actual LLM calls
-        orchestrator.planner = Mock(spec=PlannerModel)
-        orchestrator.executor = Mock(spec=BaseExecutor)
+@pytest.fixture
+def planning_service() -> PlanningService:
+    """Create a PlanningService for testing."""
+    return PlanningService()
 
-        return orchestrator
+
+@pytest.fixture
+def vivek_app_service(mock_llm_provider, mock_state_repository) -> VivekApplicationService:
+    """Create a VivekApplicationService with mocked dependencies."""
+    return VivekApplicationService(
+        workflow_service=WorkflowService(),
+        planning_service=PlanningService(),
+        llm_provider=mock_llm_provider,
+        state_repository=mock_state_repository
+    )
+
+
+@pytest.fixture
+def simple_orchestrator(vivek_app_service) -> SimpleOrchestrator:
+    """Create a SimpleOrchestrator with mocked dependencies."""
+    return SimpleOrchestrator(vivek_app_service)
 
 
 @pytest.fixture
@@ -106,15 +133,22 @@ def event_loop():
 
 
 @pytest.fixture(autouse=True)
-def mock_ollama_dependency(monkeypatch):
-    """Automatically mock ollama dependency for all tests."""
+def mock_llm_dependency(monkeypatch):
+    """Automatically mock LLM dependencies for all tests."""
+    # Mock any external LLM dependencies that tests might encounter
     mock_ollama = Mock()
     mock_ollama.generate.return_value = {"response": "Mock response"}
     mock_ollama.list.return_value = {"models": []}
     mock_ollama.pull.return_value = None
-    monkeypatch.setattr("ollama.generate", mock_ollama.generate)
-    monkeypatch.setattr("ollama.list", mock_ollama.list)
-    monkeypatch.setattr("ollama.pull", mock_ollama.pull)
+
+    # Apply mocks only if ollama is actually imported
+    try:
+        import ollama
+        monkeypatch.setattr("ollama.generate", mock_ollama.generate)
+        monkeypatch.setattr("ollama.list", mock_ollama.list)
+        monkeypatch.setattr("ollama.pull", mock_ollama.pull)
+    except ImportError:
+        pass  # ollama not available, skip mocking
 
 
 @pytest.fixture
@@ -124,26 +158,10 @@ def temp_config_file(tmp_path) -> Path:
     config_dir.mkdir(exist_ok=True)
 
     config_file = config_dir / "config.yml"
+    # Simplified config for new architecture
     config_content = {
-        "project_settings": {
-            "language": ["Python"],
-            "framework": ["FastAPI"],
-            "test_framework": ["pytest"],
-            "package_manager": ["pip"],
-        },
-        "llm_configuration": {
-            "mode": "local",
-            "planner_model": "qwen2.5-coder:7b",
-            "executor_model": "qwen2.5-coder:7b",
-            "fallback_enabled": True,
-            "auto_switch": True,
-        },
-        "preferences": {
-            "default_mode": "peer",
-            "search_enabled": True,
-            "auto_index": True,
-            "privacy_mode": False,
-        },
+        "model": "qwen2.5-coder:7b",
+        "version": "2.0-simplified"
     }
 
     import yaml
