@@ -1,53 +1,25 @@
-"""
-Agentic Context - Internal Context Management for Small LLM Agents
+"""Agentic Context - Simple context tracking for LLM workflows."""
 
-Clean API for automatic context tracking in hierarchical workflows.
-"""
-
-# Main workflow interface (what most users need)
-from .workflow import ContextWorkflow, SessionContext, ActivityContext, TaskContext
+# Main interface
+from vivek.agentic_context.workflow import ContextWorkflow, SessionContext, ActivityContext, TaskContext
 
 # Configuration
-from .config import Config, get_config
+from vivek.agentic_context.config import Config
 
+# Storage
+from vivek.agentic_context.core.context_storage import ContextStorage, ContextItem, ContextCategory
 
-# Advanced imports (for power users)
-from .core.context_storage import ContextStorage, ContextCategory, ContextItem
+# Manager
+from vivek.agentic_context.core.context_manager import ContextManager
 
-from .retrieval.retrieval_strategies import (
-    BaseRetriever,
-    TagBasedRetriever,
-    EmbeddingBasedRetriever,
-    HybridRetriever,
-    AutoRetriever,
-    RetrieverFactory,
-)
-
-from .retrieval.tag_normalization import TagVocabulary, TagNormalizer
-
-from .retrieval.semantic_retrieval import (
-    EmbeddingModel,
-    SemanticSimilarity,
-    SemanticRetriever,
-)
-
-
-# Public API
 __all__ = [
-    # Main interface
     "ContextWorkflow",
     "SessionContext",
     "ActivityContext",
     "TaskContext",
-    # Configuration
     "Config",
-    "get_config",
-    # Advanced
     "ContextStorage",
-    "ContextCategory",
     "ContextItem",
-    "RetrieverFactory",
-    "TagVocabulary",
-    "TagNormalizer",
-    "EmbeddingModel",
+    "ContextCategory",
+    "ContextManager",
 ]

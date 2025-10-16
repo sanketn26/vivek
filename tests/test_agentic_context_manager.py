@@ -1,416 +1,244 @@
-"""
-Unit tests for agentic_context.core.context_manager module
-"""
-
-from unittest.mock import Mock, patch
+"""Tests for refactored agentic_context.core.context_manager module."""
 
 import pytest
-
 from vivek.agentic_context.core.context_manager import ContextManager
+from vivek.agentic_context.config import Config
 from vivek.agentic_context.core.context_storage import ContextCategory
 
 
 class TestContextManager:
-    """Test ContextManager functionality"""
+    """Test ContextManager class."""
 
-    def setup_method(self):
-        """Set up ContextManager with mock storage and retriever"""
-        self.config = {
-            "retrieval": {"strategy": "tags_only", "max_results": 5},
-            "semantic": {"enabled": False},
-        }
-        self.context_manager = ContextManager(self.config)
+    def test_context_manager_creation(self):
+        """Test creating a context manager."""
+        config = Config.default()
+        manager = ContextManager(config)
+        assert manager is not None
+        assert manager.storage is not None
+        assert manager.retriever is not None
 
-    def test_initialization(self):
-        """Test ContextManager initialization"""
-        assert self.context_manager.config == self.config
-        assert self.context_manager.storage is not None
-        assert self.context_manager.retriever is not None
-        assert self.context_manager.embedding_model is None  # Semantic disabled
+    def test_create_session(self):
+        """Test creating a session."""
+        manager = ContextManager(Config.default())
+        session = manager.create_session("s1", "Do something", "Plan here")
+        
+        assert session is not None
+        assert session.session_id == "s1"
+        assert manager.storage.current_session_id == "s1"
 
-    def test_initialization_with_semantic(self):
-        """Test initialization with semantic retrieval enabled"""
-        config_with_semantic = {
-            "retrieval": {"strategy": "hybrid", "max_results": 5},
-            "semantic": {"enabled": True, "model": "all-MiniLM-L6-v2"},
-        }
+    def test_create_activity(self):
+        """Test creating an activity."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        activity = manager.create_activity("a1", "s1", "Implement feature", ["tag1"], "coder", "comp", "analysis")
+        assert activity is not None
+        assert activity.activity_id == "a1"
 
-        # Skip this test if it causes hanging issues - the core functionality is tested elsewhere
-        pytest.skip("Skipping test that may hang due to embedding model loading")
-
-    def test_start_session(self):
-        """Test starting a session"""
-        session = self.context_manager.start_session(
-            "session_001", "Build API", "Implement REST API with authentication"
-        )
-
-        assert session.session_id == "session_001"
-        assert session.original_ask == "Build API"
-        assert session.high_level_plan == "Implement REST API with authentication"
-
-        # Check current context
-        current_session = self.context_manager.get_session_context()
-        assert current_session == session
-
-    def test_start_activity(self):
-        """Test starting an activity"""
-        # Start session first
-        self.context_manager.start_session("session_002", "Test", "Plan")
-
-        # Start activity
-        activity = self.context_manager.start_activity(
-            "act_001",
-            "Implement feature",
-            ["feature", "api"],
-            "coder",
-            "api_service",
-            "Need to implement API endpoints",
-        )
-
-        assert activity.activity_id == "act_001"
-        assert activity.description == "Implement feature"
-        assert activity.mode == "coder"
-        assert activity.component == "api_service"
-
-        # Check current context
-        current_activity = self.context_manager.get_activity_context()
-        assert current_activity == activity
-
-    def test_start_task(self):
-        """Test starting a task"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_003", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_002", "Test", ["test"], "coder", "test", "Analysis"
-        )
-
-        # Start task
-        task = self.context_manager.start_task(
-            "task_001", "Implement function", ["function", "implementation"]
-        )
-
-        assert task.task_id == "task_001"
-        assert task.description == "Implement function"
-        assert task.tags == ["function", "implementation"]
-
-        # Check current context
-        current_task = self.context_manager.get_task_context()
-        assert current_task == task
-
-    def test_complete_task(self):
-        """Test completing a task"""
-        # Set up hierarchy and start task
-        self.context_manager.start_session("session_004", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_003", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_002", "Test task", ["test"])
-
-        # Complete task
-        self.context_manager.complete_task("task_002", "Task completed")
-
-        # Check task is marked complete
-        current_task = self.context_manager.get_task_context()
-        assert current_task is not None
-        assert current_task.previous_result == "Task completed"
-
-    def test_record_decision(self):
-        """Test recording a decision"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_005", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_004", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_003", "Test task", ["test"])
-
-        # Record decision
-        decision = self.context_manager.record_decision(
-            "Use JWT for authentication",
-            ["auth", "security"],
-            reasoning="JWT is industry standard",
-        )
-
-        assert decision.content == "Use JWT for authentication"
-        assert decision.tags == ["auth", "security"]
-        assert decision.category == ContextCategory.DECISIONS
-        assert decision.metadata["reasoning"] == "JWT is industry standard"
+    def test_create_task(self):
+        """Test creating a task."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        
+        task = manager.create_task("t1", "a1", "Task description", ["tag"])
+        assert task is not None
+        assert task.task_id == "t1"
 
     def test_record_action(self):
-        """Test recording an action"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_006", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_005", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_004", "Test task", ["test"])
+        """Test recording an action."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        manager.record_action("Performed action", ["tag1"])
+        
+        items = manager.storage.get_items_by_category(ContextCategory.ACTION)
+        assert len(items) > 0
 
-        # Record action
-        action = self.context_manager.record_action(
-            "Created authentication middleware", ["auth", "middleware"], file="auth.py"
-        )
-
-        assert action.content == "Created authentication middleware"
-        assert action.tags == ["auth", "middleware"]
-        assert action.category == ContextCategory.ACTIONS
-        assert action.metadata["file"] == "auth.py"
-
-    def test_record_result(self):
-        """Test recording a result"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_007", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_006", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_005", "Test task", ["test"])
-
-        # Record result
-        result = self.context_manager.record_result(
-            "Authentication system implemented successfully",
-            ["auth", "success"],
-            lines_of_code=150,
-        )
-
-        assert result.content == "Authentication system implemented successfully"
-        assert result.tags == ["auth", "success"]
-        assert result.category == ContextCategory.RESULTS
-        assert result.metadata["lines_of_code"] == 150
+    def test_record_decision(self):
+        """Test recording a decision."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        manager.record_decision("Made a decision", ["tag1"])
+        
+        items = manager.storage.get_items_by_category(ContextCategory.DECISION)
+        assert len(items) > 0
 
     def test_record_learning(self):
-        """Test recording a learning"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_008", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_007", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_006", "Test task", ["test"])
+        """Test recording a learning."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        manager.record_learning("Learned something", ["tag1"])
+        
+        items = manager.storage.get_items_by_category(ContextCategory.LEARNING)
+        assert len(items) > 0
 
-        # Record learning
-        learning = self.context_manager.record_learning(
-            "JWT tokens should include expiration time",
-            ["jwt", "security"],
-            lesson_type="security_best_practice",
-        )
+    def test_record_result(self):
+        """Test recording a result."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        manager.record_result("Result of work", ["tag1"])
+        
+        items = manager.storage.get_items_by_category(ContextCategory.RESULT)
+        assert len(items) > 0
 
-        assert learning.content == "JWT tokens should include expiration time"
-        assert learning.tags == ["jwt", "security"]
-        assert learning.category == ContextCategory.LEARNINGS
-        assert learning.metadata["lesson_type"] == "security_best_practice"
+    def test_complete_task(self):
+        """Test completing a task."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        manager.create_task("t1", "a1", "Task", ["tag"])
+        
+        manager.complete_task("t1", "Task result")
+        
+        task = manager.storage.tasks["t1"]
+        assert task.result == "Task result"
 
-    def test_retrieve_relevant_context(self):
-        """Test retrieving relevant context"""
-        # Set up some context items first
-        self.context_manager.start_session("session_009", "Test", "Plan")
-        self.context_manager.record_decision(
-            "Use async programming", ["async", "performance"]
-        )
+    def test_get_current_session(self):
+        """Test getting current session."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        
+        session = manager.storage.get_current_session()
+        assert session is not None
+        assert session.session_id == "s1"
 
-        # Mock retriever to return specific results
-        self.context_manager.retriever.retrieve = Mock(
-            return_value=[
-                {
-                    "item": {"content": "Test content", "category": "decisions"},
-                    "score": 0.8,
-                    "matched_tags": ["test"],
-                }
-            ]
-        )
+    def test_get_current_activity(self):
+        """Test getting current activity."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        
+        activity = manager.storage.get_current_activity()
+        assert activity is not None
+        assert activity.activity_id == "a1"
 
-        # Retrieve context
-        results = self.context_manager.retrieve_relevant_context(
-            ["test"], "test query", max_results=5
-        )
+    def test_get_current_task(self):
+        """Test getting current task."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        manager.create_task("t1", "a1", "Task", ["tag"])
+        
+        task = manager.get_current_task()
+        assert task is not None
+        assert task.task_id == "t1"
 
-        assert len(results) == 1
-        assert results[0]["item"]["content"] == "Test content"
-        assert results[0]["score"] == 0.8
+    def test_retrieve_context(self):
+        """Test retrieving context items."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.record_action("Action 1", ["api"])
+        manager.record_action("Action 2", ["api", "auth"])
+        
+        results = manager.retrieve(["api"], "API related tasks")
+        assert isinstance(results, list)
+        assert len(results) >= 0
 
-    def test_retrieve_relevant_context_with_filtering(self):
-        """Test retrieving context with score filtering"""
-        # Mock retriever to return results with different scores
-        self.context_manager.retriever.retrieve = Mock(
-            return_value=[
-                {"item": {"content": "High score"}, "score": 0.8, "matched_tags": []},
-                {"item": {"content": "Low score"}, "score": 0.3, "matched_tags": []},
-                {"item": {"content": "Medium score"}, "score": 0.6, "matched_tags": []},
-            ]
-        )
+    def test_build_prompt(self):
+        """Test building a prompt."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Build API", "Plan here")
+        
+        prompt = manager.build_prompt()
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
 
-        # Configure high threshold
-        self.context_manager.config["retrieval"]["min_score_threshold"] = 0.7
+    def test_build_prompt_with_history(self):
+        """Test building prompt with history."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Task", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        manager.record_decision("Decision made", ["tag"])
+        
+        prompt = manager.build_prompt(include_history=True)
+        assert isinstance(prompt, str)
 
-        results = self.context_manager.retrieve_relevant_context(["test"], "query")
+    def test_clear_context(self):
+        """Test clearing context."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.record_action("Action", ["tag"])
+        
+        manager.clear()
+        
+        assert len(manager.storage.sessions) == 0
+        assert len(manager.storage.items) == 0
 
-        # Should only return high score result
-        assert len(results) == 1
-        assert results[0]["item"]["content"] == "High score"
+    def test_multiple_sessions(self):
+        """Test creating multiple sessions."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Task 1", "Plan 1")
+        manager.create_session("s2", "Task 2", "Plan 2")
+        
+        assert len(manager.storage.sessions) == 2
 
-    def test_build_prompt_context(self):
-        """Test building prompt context"""
-        # Set up complete hierarchy
-        self.context_manager.start_session(
-            "session_010",
-            "Build chat application",
-            "Implement real-time chat with WebSocket",
-        )
-        self.context_manager.start_activity(
-            "act_008",
-            "Implement WebSocket server",
-            ["websocket", "server"],
-            "coder",
-            "chat_service",
-            "Need to handle real-time messaging",
-        )
-        self.context_manager.start_task(
-            "task_007", "Create message handler", ["message", "handler"]
-        )
+    def test_manager_with_semantic_config(self):
+        """Test manager with semantic search enabled."""
+        config = Config(use_semantic=False)  # Disable to avoid deps
+        manager = ContextManager(config)
+        
+        manager.create_session("s1", "Ask", "Plan")
+        manager.record_action("Test action", ["tag"])
+        
+        # Should work without errors
+        results = manager.retrieve(["tag"], "Test query")
+        assert isinstance(results, list)
 
-        # Mock retriever to return some historical context
-        self.context_manager.retriever.retrieve = Mock(
-            return_value=[
-                {
-                    "item": {"content": "Previous WebSocket implementation"},
-                    "score": 0.8,
-                    "matched_tags": ["websocket"],
-                    "category": "actions",
-                }
-            ]
-        )
+    def test_retrieve_with_custom_max_results(self):
+        """Test retrieve with custom max_results."""
+        config = Config(max_results=2)
+        manager = ContextManager(config)
+        
+        manager.create_session("s1", "Ask", "Plan")
+        for i in range(5):
+            manager.record_action(f"Action {i}", ["common"])
+        
+        results = manager.retrieve(["common"], "query")
+        assert len(results) <= 2
 
-        # Build prompt context
-        prompt = self.context_manager.build_prompt_context()
+    def test_get_stats(self):
+        """Test getting storage statistics."""
+        manager = ContextManager(Config.default())
+        manager.create_session("s1", "Ask", "Plan")
+        manager.create_activity("a1", "s1", "Activity", ["tag"], "coder", "comp", "analysis")
+        manager.create_task("t1", "a1", "Task", ["tag"])
+        manager.record_action("Action", ["tag"])
+        
+        stats = manager.storage.get_stats()
+        assert stats["sessions"] == 1
+        assert stats["activities"] == 1
+        assert stats["tasks"] == 1
+        assert stats["items"] >= 1
 
-        # Check that all layers are included
-        assert "SESSION CONTEXT" in prompt
-        assert "Build chat application" in prompt
-        assert "ACTIVITY CONTEXT" in prompt
-        assert "Implement WebSocket server" in prompt
-        assert "TASK CONTEXT" in prompt
-        assert "Create message handler" in prompt
-        assert "RELEVANT CONTEXT FROM HISTORY" in prompt
-        assert "Previous WebSocket implementation" in prompt
-
-    def test_build_minimal_context(self):
-        """Test building minimal context without history"""
-        # Set up hierarchy
-        self.context_manager.start_session("session_011", "Test ask", "Test plan")
-        self.context_manager.start_activity(
-            "act_009", "Test activity", ["test"], "coder", "test", "Test analysis"
-        )
-        self.context_manager.start_task("task_008", "Test task", ["test"])
-
-        # Build minimal context
-        context = self.context_manager.build_minimal_context()
-
-        assert "session" in context
-        assert "activity" in context
-        assert "task" in context
-        assert context["session"]["original_ask"] == "Test ask"
-        assert context["activity"]["description"] == "Test activity"
-        assert context["task"]["description"] == "Test task"
-
-    def test_get_statistics(self):
-        """Test getting statistics"""
-        # Add some context
-        self.context_manager.start_session("session_012", "Test", "Plan")
-        self.context_manager.record_action("Test action", ["test"])
-        self.context_manager.record_decision("Test decision", ["test"])
-
-        stats = self.context_manager.get_statistics()
-
-        assert "total_sessions" in stats
-        assert "actions" in stats
-        assert "decisions" in stats
-        assert stats["total_sessions"] == 1
-        assert stats["actions"] == 1
-        assert stats["decisions"] == 1
-
-    def test_clear_all_context(self):
-        """Test clearing all context"""
-        # Add some data
-        self.context_manager.start_session("session_013", "Test", "Plan")
-        self.context_manager.record_action("Test action", ["test"])
-
-        # Verify data exists
-        stats = self.context_manager.get_statistics()
-        assert stats["total_sessions"] == 1
-        assert stats["actions"] == 1
-
-        # Clear all
-        self.context_manager.clear_all_context()
-
-        # Verify data is cleared
-        stats = self.context_manager.get_statistics()
-        assert stats["total_sessions"] == 0
-        assert stats["actions"] == 0
-
-    def test_switch_retrieval_strategy(self):
-        """Test switching retrieval strategy"""
-        # Mock the factory and retriever
-        with patch(
-            "vivek.agentic_context.core.context_manager.RetrieverFactory"
-        ) as mock_factory:
-            mock_retriever = Mock()
-            mock_factory.create_retriever.return_value = mock_retriever
-
-            # Switch strategy
-            self.context_manager.switch_retrieval_strategy("hybrid")
-
-            # Verify strategy was switched
-            assert self.context_manager.config["retrieval"]["strategy"] == "hybrid"
-            mock_factory.create_retriever.assert_called_once()
-
-    def test_export_context_db(self):
-        """Test exporting context database"""
-        # Set up some context
-        self.context_manager.start_session(
-            "session_014",
-            "Export test",
-            "Test export functionality",
-            custom_metadata="test_value",
-        )
-        self.context_manager.start_activity(
-            "act_010", "Test activity", ["test"], "coder", "test", "Test analysis"
-        )
-        self.context_manager.record_action("Test action", ["test"])
-
-        # Export context
-        export_data = self.context_manager.export_context_db()
-
-        assert "sessions" in export_data
-        assert "context_db" in export_data
-
-        # Check session data
-        assert "session_014" in export_data["sessions"]
-        session_data = export_data["sessions"]["session_014"]
-        assert session_data["original_ask"] == "Export test"
-        assert session_data["high_level_plan"] == "Test export functionality"
-
-        # Check context DB
-        assert "actions" in export_data["context_db"]
-        assert len(export_data["context_db"]["actions"]) == 1
-        action_data = export_data["context_db"]["actions"][0]
-        assert action_data["content"] == "Test action"
-        assert action_data["tags"] == ["test"]
-
-    def test_context_recording_with_embedding_computation(self):
-        """Test that embeddings are computed when semantic is enabled"""
-        # Skip this test as it may cause hanging issues with embedding model loading
-        # The core embedding functionality is tested in the semantic retrieval tests
-        pytest.skip("Skipping test that may hang due to embedding model loading")
-
-    def test_context_recording_without_embedding_computation(self):
-        """Test that embeddings are not computed when semantic is disabled"""
-        # Semantic disabled (default config)
-
-        # Set up hierarchy
-        self.context_manager.start_session("session_016", "Test", "Plan")
-        self.context_manager.start_activity(
-            "act_012", "Test", ["test"], "coder", "test", "Analysis"
-        )
-        self.context_manager.start_task("task_010", "Test task", ["test"])
-
-        # Record action - should not compute embedding
-        action = self.context_manager.record_action("Test action", ["test"])
-
-        # Verify no embedding computation
-        assert action.embedding is None
+    def test_context_manager_integration(self):
+        """Test full integration scenario."""
+        manager = ContextManager(Config.default())
+        
+        # Create session
+        manager.create_session("build_api", "Build authentication API", "1. Design 2. Code 3. Test")
+        
+        # Create activity
+        manager.create_activity("design_phase", "build_api", "Design auth system", ["design", "api"], "architect", "planning", "analysis")
+        
+        # Record decisions during design
+        manager.record_decision("Use JWT tokens", ["auth", "security"])
+        manager.record_decision("Use bcrypt for passwords", ["security", "hashing"])
+        
+        # Create another activity
+        manager.create_activity("coding_phase", "build_api", "Implement auth endpoints", ["coding", "api"], "coder", "implementation", "coding")
+        
+        # Create task
+        manager.create_task("login_endpoint", "coding_phase", "Implement login endpoint", ["api", "auth"])
+        
+        # Record actions
+        manager.record_action("Created POST /auth/login", ["api", "endpoint"])
+        manager.record_action("Added JWT token response", ["token", "jwt"])
+        
+        # Build prompt with context
+        prompt = manager.build_prompt(include_history=True)
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0

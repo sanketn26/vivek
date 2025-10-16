@@ -1,827 +1,211 @@
-"""
-Integration tests for agentic_context package
-
-Tests complete workflows and interactions between components
-"""
-
-from contextlib import contextmanager
-from unittest.mock import MagicMock, Mock, patch
+"""Integration tests for refactored agentic_context module."""
 
 import pytest
-
-from vivek.agentic_context.config import Config
-from vivek.agentic_context.core.context_storage import ContextCategory
 from vivek.agentic_context.workflow import ContextWorkflow
-
-
-def create_context_manager_mock(**attrs):
-    """
-    Create a Mock that supports the context manager protocol
-    """
-    mock = MagicMock(**attrs)
-    mock.__enter__ = MagicMock(return_value=mock)
-    mock.__exit__ = MagicMock(return_value=False)
-    return mock
-
-
-class TestCompleteWorkflowIntegration:
-    """Test complete workflow scenarios"""
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_basic_workflow_execution(self):
-        """Test basic workflow from session to task completion"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            # Create context manager mocks with proper protocol support
-            mock_task = create_context_manager_mock(
-                task_id="task_001",
-                build_prompt=Mock(return_value="Test prompt"),
-                record_action=Mock(),
-                record_decision=Mock(),
-                record_learning=Mock(),
-                set_result=Mock(),
-            )
-
-            mock_activity = create_context_manager_mock(
-                activity_id="act_001", task=Mock(return_value=mock_task)
-            )
-
-            mock_session = create_context_manager_mock(
-                session_id="session_001", activity=Mock(return_value=mock_activity)
-            )
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Mock storage methods
-            mock_storage.create_session.return_value = mock_session
-            mock_storage.create_activity.return_value = mock_activity
-            mock_storage.create_task.return_value = mock_task
-            mock_storage.build_hierarchical_context.return_value = {
-                "session": {"original_ask": "Test"},
-                "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"},
-            }
-
-            # Mock context managers in workflow classes
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                # Execute workflow
-                workflow = ContextWorkflow(config)
-
-                with workflow.session("Build API") as session:
-                    with session.activity(
-                        "Implement auth",
-                        ["auth", "api"],
-                        "coder",
-                        "auth_service",
-                        "Need JWT implementation",
-                    ) as activity:
-                        with activity.task(
-                            "Create middleware", ["middleware", "auth"]
-                        ) as task:
-                            # Simulate work
-                            prompt = task.build_prompt()
-                            task.record_action("Created middleware", file="auth.py")
-                            task.record_decision(
-                                "Use JWT", reasoning="Industry standard"
-                            )
-                            task.record_learning(
-                                "Validate tokens", lesson_type="security"
-                            )
-                            task.set_result("Middleware completed")
-
-                # Verify all operations were called
-                mock_storage.create_session.assert_called_once()
-                mock_storage.create_activity.assert_called_once()
-                mock_storage.create_task.assert_called_once()
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_workflow_with_context_retrieval(self):
-        """Test workflow with historical context retrieval"""
-        config = Config.from_preset("production")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Mock historical context
-            mock_retriever.retrieve.return_value = [
-                {
-                    "item": {
-                        "content": "Previous JWT implementation",
-                        "category": "actions",
-                        "tags": ["jwt", "auth"],
-                    },
-                    "score": 0.8,
-                    "matched_tags": ["auth"],
-                    "category": "actions",
-                }
-            ]
-
-            # Set up context hierarchy
-            mock_storage.build_hierarchical_context.return_value = {
-                "session": {"original_ask": "Build auth system"},
-                "activity": {"description": "Implement JWT"},
-                "task": {"description": "Create token validation"},
-            }
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                # Set up context managers
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                mock_task = Mock()
-                mock_task.__enter__ = Mock(return_value=mock_task)
-                mock_task.__exit__ = Mock(return_value=None)
-                mock_task.build_prompt = Mock(return_value="Generated prompt")
-                mock_task.record_action = Mock()
-                mock_task.record_decision = Mock()
-                mock_task.set_result = Mock()
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                # Execute workflow
-                workflow = ContextWorkflow(config)
-
-                with workflow.session("Test session") as session:
-                    with session.activity(
-                        "Test", ["test"], "coder", "test", "Test"
-                    ) as activity:
-                        with activity.task("Test task", ["test"]) as task:
-                            # Build prompt should include historical context
-                            prompt = task.build_prompt()
-
-                            # Verify retriever was called
-                            mock_retriever.retrieve.assert_called_once()
-
-    def test_workflow_error_handling(self):
-        """Test workflow handles errors gracefully"""
-        config = Config.from_preset("development")
-
-        with patch(
-            "vivek.agentic_context.workflow.ContextStorage"
-        ) as mock_storage_class:
-            # Make storage creation fail
-            mock_storage_class.side_effect = Exception("Storage init failed")
-
-            # Workflow creation should fail gracefully
-            with pytest.raises(
-                Exception
-            ):  # Would be StorageError in real implementation
-                ContextWorkflow(config)
-
-    def test_configuration_preset_integration(self):
-        """Test that configuration presets work with workflow"""
-        # Test different presets
-        presets = ["development", "production", "fast", "accurate"]
-
-        for preset in presets:
-            config = Config.from_preset(preset)
-
-            # Should be able to create workflow with any preset
-            with (
-                patch("vivek.agentic_context.workflow.ContextStorage"),
-                patch("vivek.agentic_context.workflow.RetrieverFactory"),
-            ):
-
-                workflow = ContextWorkflow(config)
-                assert workflow.config == config
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_context_persistence_across_tasks(self):
-        """Test that context persists across multiple tasks"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Mock storage methods for multiple operations
-            mock_storage.add_context = Mock()
-            mock_storage.build_hierarchical_context.return_value = {
-                "session": {"original_ask": "Test"},
-                "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"},
-            }
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                # Set up context managers
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                def create_mock_task(task_id, description, tags):
-                    mock_task = Mock()
-                    mock_task.__enter__ = Mock(return_value=mock_task)
-                    mock_task.__exit__ = Mock(return_value=None)
-                    mock_task.task_id = task_id
-                    mock_task.record_action = Mock()
-                    mock_task.record_decision = Mock()
-                    mock_task.set_result = Mock()
-                    return mock_task
-
-                mock_task1 = create_mock_task("task_001", "Task 1", ["test"])
-                mock_task2 = create_mock_task("task_002", "Task 2", ["test"])
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-
-                # Use a counter object instead of function attribute
-                task_counter = {"count": 0}
-
-                def task_side_effect(*args, **kwargs):
-                    task_counter["count"] += 1
-
-                    if task_counter["count"] == 1:
-                        return mock_task1
-                    else:
-                        return mock_task2
-
-                mock_task_class.side_effect = task_side_effect
-
-                # Execute workflow with multiple tasks
-                workflow = ContextWorkflow(config)
-
-                with workflow.session("Test session") as session:
-                    with session.activity(
-                        "Test", ["test"], "coder", "test", "Test"
-                    ) as activity:
-                        # First task
-                        with activity.task("Task 1", ["test"]) as task1:
-                            task1.record_action("Action 1", file="file1.py")
-                            task1.set_result("Result 1")
-
-                        # Second task
-                        with activity.task("Task 2", ["test"]) as task2:
-                            task2.record_action("Action 2", file="file2.py")
-                            task2.set_result("Result 2")
-
-                # Verify both tasks recorded their actions
-                assert mock_storage.add_context.call_count >= 2
-
-    def test_strategy_switching_during_workflow(self):
-        """Test switching retrieval strategies during workflow execution"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Set up context hierarchy
-            mock_storage.build_hierarchical_context.return_value = {
-                "session": {"original_ask": "Test"},
-                "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"},
-            }
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                # Set up context managers
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                mock_task = Mock()
-                mock_task.__enter__ = Mock(return_value=mock_task)
-                mock_task.__exit__ = Mock(return_value=None)
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                # Create workflow
-                workflow = ContextWorkflow(config)
-
-                # Switch strategy
-                with patch(
-                    "vivek.agentic_context.workflow.RetrieverFactory"
-                ) as mock_new_factory:
-                    mock_new_retriever = Mock()
-                    mock_new_factory.create_retriever.return_value = mock_new_retriever
-
-                    workflow.switch_strategy("hybrid")
-
-                    # Verify strategy was switched
-                    assert workflow.config["retrieval"]["strategy"] == "hybrid"
-                    assert workflow.retriever == mock_new_retriever
-
-    def test_workflow_statistics(self):
-        """Test workflow statistics collection"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            # Mock statistics
-            expected_stats = {
-                "total_sessions": 1,
-                "total_activities": 2,
-                "total_tasks": 3,
-                "actions": 5,
-                "decisions": 2,
-                "results": 3,
-                "learnings": 1,
-            }
-
-            mock_storage.get_statistics.return_value = expected_stats
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            workflow = ContextWorkflow(config)
-
-            # Get statistics
-            stats = workflow.get_statistics()
-
-            assert stats == expected_stats
-            mock_storage.get_statistics.assert_called_once()
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_workflow_export_functionality(self):
-        """Test workflow export for persistence"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            # Mock sessions data
-            mock_session = Mock()
-            mock_session.session_id = "session_001"
-            mock_session.original_ask = "Test ask"
-            mock_session.high_level_plan = "Test plan"
-            mock_session.created_at.isoformat.return_value = "2023-01-01T00:00:00"
-            mock_session.activities = []
-
-            mock_storage.sessions = {"session_001": mock_session}
-
-            # Mock context DB
-            mock_item = Mock()
-            mock_item.content = "Test content"
-            mock_item.tags = ["test"]
-            mock_item.timestamp.isoformat.return_value = "2023-01-01T00:00:00"
-            mock_item.activity_id = None
-            mock_item.task_id = None
-            mock_item.metadata = {}
-
-            # Mock context DB structure
-            with patch.object(mock_storage, "context_db") as mock_db:
-                mock_category = Mock()
-                mock_category.value = "actions"
-                mock_db.items.return_value = [(mock_category, [mock_item])]
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            workflow = ContextWorkflow(config)
-
-            # Export workflow
-            export_data = workflow.export()
-
-            assert "sessions" in export_data
-            assert "context_db" in export_data
-            assert "session_001" in export_data["sessions"]
-
-            # Verify session data
-            session_data = export_data["sessions"]["session_001"]
-            assert session_data["original_ask"] == "Test ask"
-            assert session_data["high_level_plan"] == "Test plan"
-
-            # Verify context DB data
-            assert "actions" in export_data["context_db"]
-            assert len(export_data["context_db"]["actions"]) == 1
-
-
-class TestCrossComponentIntegration:
-    """Test interactions between different components"""
-
-    def test_config_to_storage_integration(self):
-        """Test configuration affects storage behavior"""
-        # Test with different presets
-        presets = ["fast", "accurate"]
-
-        for preset in presets:
-            config = Config.from_preset(preset)
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.ContextStorage"
-                ) as mock_storage_class,
-                patch(
-                    "vivek.agentic_context.workflow.RetrieverFactory"
-                ) as mock_factory_class,
-            ):
-
-                mock_storage = Mock()
-                mock_retriever = Mock()
-
-                mock_storage_class.return_value = mock_storage
-                mock_factory_class.create_retriever.return_value = mock_retriever
-
-                workflow = ContextWorkflow(config)
-
-                # Config should be passed to retriever factory
-                mock_factory_class.create_retriever.assert_called_with(
-                    mock_storage, config
-                )
-
-    def test_retrieval_strategy_configuration(self):
-        """Test that retrieval strategy configuration affects behavior"""
-        strategies = ["tags_only", "hybrid", "auto"]
-
-        for strategy in strategies:
-            config = Config.from_preset("development")
-            config = Config.from_preset(
-                "development", **{f"retrieval.strategy": strategy}
-            )
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.ContextStorage"
-                ) as mock_storage_class,
-                patch(
-                    "vivek.agentic_context.workflow.RetrieverFactory"
-                ) as mock_factory_class,
-            ):
-
-                mock_storage = Mock()
-                mock_retriever = Mock()
-
-                mock_storage_class.return_value = mock_storage
-                mock_factory_class.create_retriever.return_value = mock_retriever
-
-                workflow = ContextWorkflow(config)
-
-                # Should create appropriate retriever type based on strategy
-                mock_factory_class.create_retriever.assert_called_once()
-
-    def test_context_hierarchy_validation(self):
-        """Test that context hierarchy is properly validated"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            # Make storage operations fail to test error handling
-            mock_storage.create_activity.side_effect = ValueError("No active session")
-            mock_storage.create_task.side_effect = ValueError("No active activity")
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                # Set up context managers
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                mock_task = Mock()
-                mock_task.__enter__ = Mock(return_value=mock_task)
-                mock_task.__exit__ = Mock(return_value=None)
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                workflow = ContextWorkflow(config)
-
-                # Test hierarchy validation - should fail when trying to create activity without session
-                with workflow.session("Test") as session:
-                    # This should work
-                    pass
-
-                # Activity creation without session should fail
-                # (This would be tested in actual implementation)
-
-
-class TestPerformanceAndScalability:
-    """Test performance and scalability aspects"""
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_large_context_handling(self):
-        """Test handling of large context databases"""
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            # Set up mocks
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            # Mock large number of context items
-            large_context_items = [
-                Mock(
-                    content=f"Content {i}",
-                    tags=[f"tag{i}"],
-                    category=ContextCategory.ACTIONS,
-                )
-                for i in range(1000)
-            ]
-
-            mock_storage.get_all_context_items.return_value = large_context_items
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Mock retriever to handle large dataset
-            mock_retriever.retrieve.return_value = [
-                {
-                    "item": {"content": "Relevant item"},
-                    "score": 0.8,
-                    "matched_tags": ["test"],
-                }
-            ]
-
-            workflow = ContextWorkflow(config)
-
-            # Should handle large context without issues
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                mock_task = Mock()
-                mock_task.__enter__ = Mock(return_value=mock_task)
-                mock_task.__exit__ = Mock(return_value=None)
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                # Execute workflow with large context
-                with workflow.session("Test") as session:
-                    with session.activity(
-                        "Test", ["test"], "coder", "test", "Test"
-                    ) as activity:
-                        with activity.task("Test task", ["test"]) as task:
-                            # Should handle large context retrieval
-                            prompt = task.build_prompt()
-
-                # Verify retriever was called with large dataset
-                mock_storage.get_all_context_items.assert_called()
-
-    @pytest.mark.skip(
-        reason="Integration test requires complex mocking - needs refactoring"
-    )
-    def test_concurrent_workflow_execution(self):
-        """Test concurrent workflow execution"""
-        import threading
-        import time
-
-        config = Config.from_preset("development")
-
-        with (
-            patch(
-                "vivek.agentic_context.workflow.ContextStorage"
-            ) as mock_storage_class,
-            patch(
-                "vivek.agentic_context.workflow.RetrieverFactory"
-            ) as mock_factory_class,
-        ):
-
-            mock_storage = Mock()
-            mock_retriever = Mock()
-
-            mock_storage_class.return_value = mock_storage
-            mock_factory_class.create_retriever.return_value = mock_retriever
-
-            # Set up context hierarchy
-            mock_storage.build_hierarchical_context.return_value = {
-                "session": {"original_ask": "Test"},
-                "activity": {"description": "Test activity"},
-                "task": {"description": "Test task"},
-            }
-
-            with (
-                patch(
-                    "vivek.agentic_context.workflow.SessionContext"
-                ) as mock_session_class,
-                patch(
-                    "vivek.agentic_context.workflow.ActivityContext"
-                ) as mock_activity_class,
-                patch("vivek.agentic_context.workflow.TaskContext") as mock_task_class,
-            ):
-
-                mock_session = Mock()
-                mock_session.__enter__ = Mock(return_value=mock_session)
-                mock_session.__exit__ = Mock(return_value=None)
-
-                mock_activity = Mock()
-                mock_activity.__enter__ = Mock(return_value=mock_activity)
-                mock_activity.__exit__ = Mock(return_value=None)
-
-                mock_task = Mock()
-                mock_task.__enter__ = Mock(return_value=mock_task)
-                mock_task.__exit__ = Mock(return_value=None)
-                mock_task.record_action = Mock()
-
-                mock_session_class.return_value = mock_session
-                mock_activity_class.return_value = mock_activity
-                mock_task_class.return_value = mock_task
-
-                def run_workflow(workflow_id):
-                    """Run a workflow in a separate thread"""
-                    workflow = ContextWorkflow(config)
-
-                    with workflow.session(f"Session {workflow_id}") as session:
-                        with session.activity(
-                            f"Activity {workflow_id}",
-                            [f"tag{workflow_id}"],
-                            "coder",
-                            "test",
-                            "Test",
-                        ) as activity:
-                            with activity.task(
-                                f"Task {workflow_id}", [f"tag{workflow_id}"]
-                            ) as task:
-                                task.record_action(f"Action {workflow_id}")
-                                time.sleep(0.01)  # Simulate work
-
-                # Run multiple workflows concurrently
-                threads = []
-                for i in range(5):
-                    thread = threading.Thread(target=run_workflow, args=(i,))
-                    threads.append(thread)
-
-                # Start all threads
-                for thread in threads:
-                    thread.start()
-
-                # Wait for completion
-                for thread in threads:
-                    thread.join()
-
-                # Verify all workflows completed without interference
-                assert mock_storage.add_context.call_count >= 5
+from vivek.agentic_context.config import Config
+
+
+class TestAgenticContextIntegration:
+    """Integration tests for full agentic context workflow."""
+
+    def test_complete_workflow_scenario(self):
+        """Test a complete workflow from session to result."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("build_feature", "Build user authentication", "1. Design 2. Implement 3. Test") as session_ctx:
+            assert session_ctx is not None
+            
+            # Design phase
+            with session_ctx.activity("design", "Design authentication system", "architect", "planning", "analysis", ["auth", "design"]) as design_ctx:
+                with design_ctx.task("Create architecture diagram", ["diagram", "architecture"]) as task_ctx:
+                    task_ctx.record_decision("Use JWT for token-based auth")
+                    task_ctx.record_decision("Use bcrypt for password hashing")
+                    task_ctx.set_result("Architecture diagram created and documented")
+            
+            # Implementation phase
+            with session_ctx.activity("implementation", "Implement auth endpoints", "coder", "coding", "implementation", ["auth", "api"]) as impl_ctx:
+                # Login endpoint
+                with impl_ctx.task("Implement login endpoint", ["endpoint", "auth", "api"]) as task_ctx:
+                    task_ctx.record_action("Created POST /auth/login endpoint")
+                    task_ctx.record_action("Added email/password validation")
+                    task_ctx.record_decision("Return JWT token in response")
+                    task_ctx.set_result("Login endpoint completed and tested")
+                
+                # Signup endpoint
+                with impl_ctx.task("Implement signup endpoint", ["endpoint", "auth", "api"]) as task_ctx:
+                    task_ctx.record_action("Created POST /auth/signup endpoint")
+                    task_ctx.record_action("Added password hashing with bcrypt")
+                    task_ctx.record_decision("Send verification email after signup")
+                    task_ctx.set_result("Signup endpoint completed and tested")
+
+    def test_workflow_with_retrieval(self):
+        """Test workflow with context retrieval."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("s1", "Build system", "Plan") as session_ctx:
+            with session_ctx.activity("a1", "Implement API", "coder", "comp", "analysis", ["api"]) as activity_ctx:
+                # Record some decisions
+                workflow.manager.record_decision("Use REST API design", ["api", "architecture"])
+                workflow.manager.record_decision("Use JSON for payload", ["api", "format"])
+                
+                # Later, retrieve similar context
+                with activity_ctx.task("Create endpoints", ["api", "endpoint"]) as task_ctx:
+                    # Build prompt should include relevant history
+                    prompt = task_ctx.build_prompt(include_history=True)
+                    assert isinstance(prompt, str)
+                    assert len(prompt) > 0
+
+    def test_multiple_sessions_same_workflow(self):
+        """Test managing multiple sessions in one workflow."""
+        workflow = ContextWorkflow(Config.default())
+        
+        # First session
+        with workflow.session("s1", "Task 1", "Plan 1") as ctx1:
+            with ctx1.activity("a1", "Activity 1", "coder", "comp", "analysis") as act1:
+                workflow.manager.record_action("Action in session 1", ["s1"])
+        
+        # Second session
+        with workflow.session("s2", "Task 2", "Plan 2") as ctx2:
+            with ctx2.activity("a2", "Activity 2", "architect", "comp", "analysis") as act2:
+                workflow.manager.record_action("Action in session 2", ["s2"])
+        
+        # Verify both sessions exist
+        assert len(workflow.manager.storage.sessions) == 2
+
+    def test_context_building_with_activity_and_task(self):
+        """Test that context builds properly with activity and task info."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("build_api", "Build API", "Plan") as session_ctx:
+            with session_ctx.activity("impl", "Implementation phase", "coder", "component1", "analysis", ["coding"]) as activity_ctx:
+                with activity_ctx.task("Implement endpoint", ["api", "endpoint"]) as task_ctx:
+                    prompt = task_ctx.build_prompt(include_history=False)
+                    
+                    # Prompt should contain session, activity, and task info
+                    assert "TASK" in prompt or "Task" in prompt or "Implement endpoint" in prompt
+
+    def test_recording_all_context_types(self):
+        """Test recording all types of context."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("s1", "Build", "Plan") as session_ctx:
+            # Record all types
+            workflow.manager.record_action("Performed action", ["tag1"])
+            workflow.manager.record_decision("Made decision", ["tag2"])
+            workflow.manager.record_learning("Learned something", ["tag3"])
+            workflow.manager.record_result("Got result", ["tag4"])
+            
+            # Verify storage
+            stats = workflow.manager.storage.get_stats()
+            assert stats["items"] >= 4
+
+    def test_semantic_config_integration(self):
+        """Test workflow with semantic search config."""
+        config = Config(use_semantic=False, max_results=5)
+        workflow = ContextWorkflow(config)
+        
+        with workflow.session("s1", "Task", "Plan") as session_ctx:
+            with session_ctx.activity("a1", "Activity", "coder", "comp", "analysis") as activity_ctx:
+                # Record some items
+                workflow.manager.record_action("Implementation detail", ["api", "endpoint"])
+                workflow.manager.record_decision("Architecture choice", ["api", "design"])
+                
+                # Retrieve should respect max_results
+                with activity_ctx.task("Create endpoint", ["api"]) as task_ctx:
+                    results = workflow.manager.retrieve(["api"], "API implementation")
+                    assert len(results) <= 5
+
+    def test_nested_hierarchy_isolation(self):
+        """Test that nested contexts properly manage state."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("s1", "First task", "Plan 1") as ctx1:
+            with ctx1.activity("a1", "First activity", "coder", "comp", "analysis") as act1:
+                with act1.task("Task 1", ["t1"]) as t1:
+                    task1 = workflow.manager.get_current_task()
+                    assert task1 is not None
+                    assert task1.description == "Task 1"
+                
+                with act1.task("Task 2", ["t2"]) as t2:
+                    task2 = workflow.manager.get_current_task()
+                    assert task2 is not None
+                    assert task2.description == "Task 2"
+                    # Should be different from task1
+                    assert task1 is not None
+                    assert task1.task_id != task2.task_id
+
+    def test_complete_task_tracking(self):
+        """Test that task completion is tracked."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("s1", "Task", "Plan") as session_ctx:
+            with session_ctx.activity("a1", "Activity", "coder", "comp", "analysis") as activity_ctx:
+                with activity_ctx.task("Subtask", ["tag"]) as task_ctx:
+                    task_ctx.set_result("Task completed successfully")
+                
+                # Get task and verify result is set
+                task = workflow.manager.get_current_task()
+                assert task is not None
+                assert task.result == "Task completed successfully"
+
+    def test_retrieval_across_session_history(self):
+        """Test that retrieval works across recorded history."""
+        workflow = ContextWorkflow(Config.default())
+        
+        with workflow.session("s1", "Build", "Plan") as session_ctx:
+            # Record various decisions and actions
+            workflow.manager.record_decision("Decision about authentication", ["auth", "security"])
+            workflow.manager.record_action("Implemented login", ["auth", "api"])
+            workflow.manager.record_learning("JWT is good for stateless auth", ["auth", "jwt"])
+            
+            # Retrieve with different query
+            results = workflow.manager.retrieve(["security"], "security related decisions")
+            assert isinstance(results, list)
+            assert len(results) >= 0
+
+    def test_workflow_clear_and_reuse(self):
+        """Test clearing and reusing workflow."""
+        workflow = ContextWorkflow(Config.default())
+        
+        # First use
+        with workflow.session("s1", "Task 1", "Plan") as ctx:
+            workflow.manager.record_action("Action 1", ["tag"])
+        
+        stats1 = workflow.manager.storage.get_stats()
+        assert stats1["sessions"] == 1
+        
+        # Clear and reuse
+        workflow.clear()
+        
+        stats2 = workflow.manager.storage.get_stats()
+        assert stats2["sessions"] == 0
+        
+        # Use again
+        with workflow.session("s2", "Task 2", "Plan") as ctx:
+            workflow.manager.record_action("Action 2", ["tag"])
+        
+        stats3 = workflow.manager.storage.get_stats()
+        assert stats3["sessions"] == 1
+
+    def test_real_world_coding_scenario(self):
+        """Test a real-world coding scenario."""
+        workflow = ContextWorkflow(Config(max_results=5))
+        
+        with workflow.session("feature_auth", "Implement OAuth2 authentication", "Design -> Implement -> Test") as session_ctx:
+            # Design phase
+            with session_ctx.activity("design_oauth", "Design OAuth2 flow", "architect", "security", "architecture", ["oauth2", "design"]) as design:
+                with design.task("Research OAuth2 standards", ["research", "oauth2"]) as task:
+                    task.record_learning("OAuth2 uses authorization codes and tokens")
+                    task.record_decision("Use authorization code flow for web apps")
+                    task.set_result("OAuth2 design finalized")
+            
+            # Implement phase
+            with session_ctx.activity("implement_oauth", "Implement OAuth2 provider", "coder", "backend", "implementation", ["oauth2", "implementation"]) as impl:
+                with impl.task("Setup authorization endpoint", ["endpoint", "auth"]) as task:
+                    task.record_action("Created /oauth/authorize endpoint")
+                    task.set_result("Authorization endpoint working")
+                
+                with impl.task("Setup token endpoint", ["endpoint", "token"]) as task:
+                    task.record_action("Created /oauth/token endpoint")
+                    task.record_decision("Return refresh token with expiry")
+                    task.set_result("Token endpoint working")
