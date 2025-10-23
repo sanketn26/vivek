@@ -19,6 +19,37 @@ This workstream implements the three core services that power Vivek's dual-brain
 - ✅ Prompt templates
 - ✅ 40+ unit tests
 
+### Context Window Strategy
+
+**Problem**: LLMs have limited context windows (typically 8K-32K tokens). Each work item execution needs:
+- System prompt (~500 tokens)
+- User prompt with context (~2K tokens)
+- Output buffer (~2K tokens)
+- **Available for code generation: ~4K tokens** (≈200 lines of code)
+
+**Solution**: The planner is designed to create **small, focused work items**:
+- ✅ Each work item = ONE file
+- ✅ Each file = <200 lines
+- ✅ Large features = Multiple work items with dependencies
+- ✅ Context includes only relevant dependencies (not entire codebase)
+
+**Example Breakdown**:
+```
+User request: "Create user authentication system"
+
+❌ BAD (too large):
+- item_1: "Create complete auth system" (would generate 1000+ lines)
+
+✅ GOOD (properly scoped):
+- item_1: "Create User model (30 lines)"
+- item_2: "Create AuthService with login/logout (80 lines)"
+- item_3: "Create auth middleware (50 lines)"
+- item_4: "Create /login endpoint (40 lines)"
+- item_5: "Create tests for AuthService (100 lines)"
+```
+
+This approach ensures each LLM call stays within context limits.
+
 ---
 
 ## Part 1: Prompt Templates
@@ -33,17 +64,25 @@ PLANNER_SYSTEM_PROMPT = """You are an expert software architect. Your task is to
 Rules:
 1. Create 3-5 work items maximum
 2. Each work item must be specific and actionable
-3. Identify dependencies between work items (use work item IDs)
-4. Specify execution mode: "coder" for implementation, "sdet" for tests
-5. Output ONLY valid JSON, no additional text
+3. Each work item should target ONE FILE ONLY (keep scope small)
+4. Keep each file under 200 lines to fit in LLM context window
+5. Break large features into multiple small files instead of one large file
+6. Identify dependencies between work items (use work item IDs)
+7. Specify execution mode: "coder" for implementation, "sdet" for tests
+8. Output ONLY valid JSON, no additional text
+
+Context Window Considerations:
+- Each work item will be executed with ~4K tokens of context
+- Generated code should be <200 lines per file
+- If a feature needs >200 lines, split into multiple files with clear interfaces
 
 Output format:
 {
   "work_items": [
     {
       "id": "item_1",
-      "file_path": "src/module.py",
-      "description": "Create User model with email and password fields",
+      "file_path": "src/models/user.py",
+      "description": "Create User Pydantic model with email and password fields only",
       "mode": "coder",
       "language": "python",
       "file_status": "new",
@@ -51,15 +90,33 @@ Output format:
     },
     {
       "id": "item_2",
-      "file_path": "tests/test_module.py",
-      "description": "Write tests for User model",
-      "mode": "sdet",
+      "file_path": "src/services/auth_service.py",
+      "description": "Create AuthService with login method using User model",
+      "mode": "coder",
       "language": "python",
       "file_status": "new",
       "dependencies": ["item_1"]
+    },
+    {
+      "id": "item_3",
+      "file_path": "tests/test_auth_service.py",
+      "description": "Write tests for AuthService login method (3-5 test cases)",
+      "mode": "sdet",
+      "language": "python",
+      "file_status": "new",
+      "dependencies": ["item_2"]
     }
   ]
 }
+
+Good Example (Small Scoped Work Items):
+✅ "Create User model with 3 fields: email, password, full_name"
+✅ "Create AuthService with single login() method"
+✅ "Write 5 tests for login success and failure cases"
+
+Bad Example (Too Large for Context Window):
+❌ "Create complete user authentication system with models, services, routes, middleware, and tests"
+❌ "Build entire REST API with 10 endpoints"
 """
 
 PLANNER_USER_PROMPT_TEMPLATE = """Project Context:

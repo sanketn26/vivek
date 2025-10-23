@@ -60,15 +60,23 @@ class ExecutionMode(str, Enum):
 class WorkItem:
     """Unit of work to be executed.
 
+    Each work item should be scoped to generate ONE file with <200 lines
+    to fit within LLM context window constraints (~4K tokens for execution).
+
     Attributes:
         id: Unique identifier (UUID)
         file_path: Relative path from project root
-        description: What to implement
+        description: What to implement (should be specific and focused)
         mode: Execution mode (coder or sdet)
         language: Programming language
         file_status: "new" or "existing"
         dependencies: IDs of work items this depends on
         context: Additional context for execution
+
+    Design Notes:
+        - Planner creates work items with limited scope (one file, <200 lines)
+        - Large features are decomposed into multiple work items
+        - Each work item is independently executable within context limits
     """
     id: str
     file_path: str
@@ -351,53 +359,7 @@ class IFileService(Protocol):
 ### File: `src/vivek/domain/exceptions/vivek_exceptions.py`
 
 ```python
-"""Exception hierarchy for Vivek."""
-
-from typing import Optional
-
-
-class VivekException(Exception):
-    """Base exception for all Vivek errors."""
-    pass
-
-
-class PlanningException(VivekException):
-    """Planning failed."""
-    pass
-
-
-class ExecutionException(VivekException):
-    """Execution failed."""
-    pass
-
-
-class QualityException(VivekException):
-    """Quality check failed."""
-    pass
-
-
-class ValidationException(VivekException):
-    """Validation failed."""
-    pass
-
-
-class LLMException(VivekException):
-    """LLM provider error."""
-
-    def __init__(
-        self,
-        message: str,
-        provider: str,
-        retry_after: Optional[int] = None
-    ):
-        self.provider = provider
-        self.retry_after = retry_after
-        super().__init__(message)
-
-
-class ConfigurationException(VivekException):
-    """Configuration error."""
-    pass
+ll,
 ```
 
 ---
