@@ -62,7 +62,8 @@ class TestEmbeddingModel:
             emb = model.encode(text)
             sim = model.similarity(emb, emb)
             # Identical embeddings should have high similarity
-            assert 0.9 <= sim <= 1.0
+            # Allow for floating-point precision issues (max ~1.0000001)
+            assert 0.9 <= sim <= 1.00001
         except ImportError:
             pytest.skip("sentence_transformers not installed")
 
