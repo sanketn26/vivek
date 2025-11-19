@@ -290,7 +290,7 @@ Key Guidelines:
 # HELPER FUNCTIONS
 # ============================================================================
 
-def build_clarification_prompt(user_request: str, project_context: str) -> dict:
+def build_clarification_prompt(user_request: str, project_context: str) -> dict[str, str]:
     """Build clarification phase prompt.
 
     Args:

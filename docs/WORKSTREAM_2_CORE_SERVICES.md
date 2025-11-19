@@ -1,7 +1,7 @@
-# Workstream 2: Core Services
+# Workstream 2: Core Services & Interactive Planning
 
 **Timeline**: Week 3-5
-**Goal**: Implement planning, execution, and quality services
+**Goal**: Implement planning, execution, and quality services with multi-phase interactive workflow
 
 **Prerequisites**: Workstream 1 complete
 
@@ -9,14 +9,20 @@
 
 ## Overview
 
-This workstream implements the three core services that power Vivek's dual-brain architecture.
+This workstream implements the core services with a **multi-phase interactive planning system** that progressively refines requirements before decomposition. The system now uses a three-phase approach:
+
+1. **Clarification Phase**: Ask clarifying questions for missing requirements
+2. **Confirmation Phase**: Validate understanding of requirements
+3. **Decomposition Phase**: Break down into actionable work items using TDD
 
 ### Deliverables
-- ✅ Planner service (decompose requests into work items)
-- ✅ Executor service with 2 modes (Coder, SDET)
+- ✅ Multi-phase planner service (clarify → confirm → decompose)
+- ✅ Executor service with multiple modes (Coder, SDET with 5-phase TDD, Architect, Peer)
 - ✅ Quality service (evaluate outputs)
-- ✅ Dependency resolution
-- ✅ Prompt templates
+- ✅ Dependency resolution with topological sort
+- ✅ Prompt architecture with factory pattern and interfaces
+- ✅ TDD workflow orchestrator (struct → tests → implementation → verification)
+- ✅ Granular SDET workflow (5-phase test development)
 - ✅ 40+ unit tests
 
 ### Context Window Strategy
@@ -27,274 +33,222 @@ This workstream implements the three core services that power Vivek's dual-brain
 - Output buffer (~2K tokens)
 - **Available for code generation: ~4K tokens** (≈200 lines of code)
 
-**Solution**: The planner is designed to create **small, focused work items**:
+**Solution**: The planner creates **small, focused work items** with language-specific TDD patterns:
 - ✅ Each work item = ONE file
-- ✅ Each file = <200 lines
-- ✅ Large features = Multiple work items with dependencies
+- ✅ Each file = <200 lines (coder) or <100 lines per test phase (SDET)
+- ✅ Large features = Multiple work items with explicit dependencies
+- ✅ TDD workflow = Structs/Interfaces → Tests (5 phases) → Implementation → Verification
 - ✅ Context includes only relevant dependencies (not entire codebase)
 
-**Example Breakdown**:
+**Example Breakdown (Python User Authentication)**:
 ```
 User request: "Create user authentication system"
 
-❌ BAD (too large):
-- item_1: "Create complete auth system" (would generate 1000+ lines)
+Phase 1 - CLARIFICATION (User Input Required):
+Question: "Do you need OAuth or JWT? Single user service or multi-tenant?"
+User Response: "JWT-based, single-tenant, email/password login"
 
-✅ GOOD (properly scoped):
-- item_1: "Create User model (30 lines)"
-- item_2: "Create AuthService with login/logout (80 lines)"
-- item_3: "Create auth middleware (50 lines)"
-- item_4: "Create /login endpoint (40 lines)"
-- item_5: "Create tests for AuthService (100 lines)"
+Phase 2 - CONFIRMATION (User Input Required):
+Understanding Summary:
+  • What we're building: JWT token-based authentication
+  • Scope: User creation, login, token validation
+  • Key constraints: Single tenant, in-memory for now
+  • Assumptions: User emails are unique
+  • Success criteria: Can create users, login, validate tokens
+
+User Confirmation: ✅ Confirmed
+
+Phase 3 - DECOMPOSITION (Generated Plan):
+- item_1: coder - "Create User dataclass with id, email, password_hash, created_at"
+- item_2: sdet phase_1_fixtures - "Define UserFactory, mock DB, test data builders"
+- item_3: sdet phase_2b_happy_path - "Test successful user creation and retrieval"
+- item_4: sdet phase_2c_edge_cases - "Test empty email, null password, boundary values"
+- item_5: sdet phase_2d_error_handling - "Test duplicate users, invalid input, DB failures"
+- item_6: coder - "Implement UserService with create_user, get_user methods"
+- item_7: sdet phase_2e_coverage_analysis - "Analyze test coverage, identify gaps"
+- item_8: coder - "Create JWT token generation service"
+- item_9: sdet phase_1_fixtures - "Define TokenFactory, mock crypto, test tokens"
+- item_10: sdet phase_2b_happy_path - "Test token generation and validation"
 ```
 
-This approach ensures each LLM call stays within context limits.
+This approach ensures:
+- Each LLM call stays within context limits
+- Users have intermediate control over requirements
+- Comprehensive test coverage through TDD
+- Language-specific best practices applied
 
 ---
 
-## Part 1: Prompt Templates
+## Part 1: Prompt Architecture (Refactored)
 
-### File: `src/vivek/prompts/planner_prompts.py`
+The prompt system has been completely refactored to use a **factory pattern with abstract base classes** for type safety and extensibility.
 
-```python
-"""Prompts for planner service."""
+### New Prompt Architecture Files
 
-PLANNER_SYSTEM_PROMPT = """You are an expert software architect. Your task is to decompose user requests into actionable work items.
+#### File: `src/vivek/prompts/prompt_architecture.py`
 
-Rules:
-1. Create 3-5 work items maximum
-2. Each work item must be specific and actionable
-3. Each work item should target ONE FILE ONLY (keep scope small)
-4. Keep each file under 200 lines to fit in LLM context window
-5. Break large features into multiple small files instead of one large file
-6. Identify dependencies between work items (use work item IDs)
-7. Specify execution mode: "coder" for implementation, "sdet" for tests
-8. Output ONLY valid JSON, no additional text
+Complete architecture with:
+- **Enums**: `ExecutorMode` (coder, sdet, architect, peer), `SDETPhase` (5 phases), `PlannerPhase` (3 phases)
+- **Data Classes**: `PromptPair` (system + user prompts), `WorkItem`
+- **Abstract Base Classes**: `BasePrompt`, `BasePlannerPrompt`, `BaseExecutorPrompt`
+- **Concrete Implementations**:
+  - Planner: `ClarificationPrompt`, `ConfirmationPrompt`, `DecompositionPrompt`
+  - Executor: `StructInterfacePrompt`, `TestFixturesPrompt`, `HappyPathTestsPrompt`, `ImplementationPrompt`
+- **Factory**: `PromptFactory` for centralized creation
+- **Backward Compatibility**: Helper functions for existing code
 
-Context Window Considerations:
-- Each work item will be executed with ~4K tokens of context
-- Generated code should be <200 lines per file
-- If a feature needs >200 lines, split into multiple files with clear interfaces
+**Key Benefits**:
+- Type-safe prompt creation
+- Easy to extend with new prompt types (e.g., architect, peer modes)
+- Backward compatible through helper functions
+- Language-agnostic architecture supports Go, Python, TypeScript
 
-Output format:
-{
-  "work_items": [
-    {
-      "id": "item_1",
-      "file_path": "src/models/user.py",
-      "description": "Create User Pydantic model with email and password fields only",
-      "mode": "coder",
-      "language": "python",
-      "file_status": "new",
-      "dependencies": []
-    },
-    {
-      "id": "item_2",
-      "file_path": "src/services/auth_service.py",
-      "description": "Create AuthService with login method using User model",
-      "mode": "coder",
-      "language": "python",
-      "file_status": "new",
-      "dependencies": ["item_1"]
-    },
-    {
-      "id": "item_3",
-      "file_path": "tests/test_auth_service.py",
-      "description": "Write tests for AuthService login method (3-5 test cases)",
-      "mode": "sdet",
-      "language": "python",
-      "file_status": "new",
-      "dependencies": ["item_2"]
-    }
-  ]
-}
+#### File: `src/vivek/prompts/multi_phase_planner_prompts.py`
 
-Good Example (Small Scoped Work Items):
-✅ "Create User model with 3 fields: email, password, full_name"
-✅ "Create AuthService with single login() method"
-✅ "Write 5 tests for login success and failure cases"
+**Three-Phase Interactive Planning System** (replaces single-phase planner):
 
-Bad Example (Too Large for Context Window):
-❌ "Create complete user authentication system with models, services, routes, middleware, and tests"
-❌ "Build entire REST API with 10 endpoints"
-"""
+**Phase 1 - CLARIFICATION**:
+- System Prompt: "Skilled requirement analyst"
+- Task: Ask 2-4 critical clarifying questions if needed
+- Output: `{needs_clarification: bool, questions: [], reason: ""}`
+- Flow: If unclear, user answers questions → continue to Phase 2
+- Flow: If clear, skip questions → continue to Phase 2
 
-PLANNER_USER_PROMPT_TEMPLATE = """Project Context:
-{project_context}
+**Phase 2 - CONFIRMATION**:
+- System Prompt: "Requirements validation expert"
+- Task: Validate understanding based on user request + clarifications
+- Output: `{understanding: [5-7 bullet points], confirmed: bool, concerns: ""}`
+- Flow: If confirmed=true → proceed to Phase 3
+- Flow: If confirmed=false → return to Phase 1 for more clarifications
 
-User Request:
-{user_request}
+**Phase 3 - DECOMPOSITION**:
+- System Prompt: "Expert software architect with TDD expertise"
+- Task: Decompose requirements into 5-10 work items using TDD pattern
+- Output: `{work_items: [...], rationale: ""}`
+- Each work item includes: id, file_path, description, mode, language, file_status, dependencies, sdet_phase (if applicable), context_hints
 
-Generate a plan with 3-5 work items. Include at least one test file (sdet mode).
-Output ONLY the JSON plan, nothing else."""
+**TDD Decomposition Rules**:
 
-
-def build_planner_prompt(user_request: str, project_context: str) -> dict:
-    """Build planner prompt.
-
-    Args:
-        user_request: What user wants to implement
-        project_context: Project information
-
-    Returns:
-        Dict with system and user prompts
-    """
-    return {
-        "system": PLANNER_SYSTEM_PROMPT,
-        "user": PLANNER_USER_PROMPT_TEMPLATE.format(
-            project_context=project_context,
-            user_request=user_request
-        )
-    }
+For each component (User model, Auth service, etc.):
+```
+1. coder - Define structs/dataclasses/interfaces (no implementation, <100 lines)
+2. sdet phase_1_fixtures - Create test fixtures, mocks, factories (<80 lines)
+3. sdet phase_2b_happy_path - Write success scenario tests (<60 lines)
+4. sdet phase_2c_edge_cases - Write boundary condition tests (<60 lines)
+5. sdet phase_2d_error_handling - Write exception handling tests (<60 lines)
+6. coder - Implement functions to pass tests (<50 lines per method)
+7. sdet phase_2e_coverage_analysis - Analyze coverage and identify gaps
 ```
 
-### File: `src/vivek/prompts/executor_prompts.py`
+**Language-Specific Patterns**:
 
-```python
-"""Prompts for executor service."""
+Go:
+- Structs: Separate item (models/user.go)
+- Interfaces: Separate item if >1 method (services/user_service.go)
+- Implementation: Separate items per major function
 
-CODER_SYSTEM_PROMPT = """You are an expert software engineer. Generate production-quality code.
+Python:
+- Dataclasses/Models: Separate item (models/user.py)
+- Service Classes: Separate item (services/user_service.py)
+- Utilities: Separate items by functional group
 
-Requirements:
-1. Follow best practices for the language
-2. Include proper error handling
-3. Add type hints (Python) or types (TypeScript)
-4. Write clear docstrings/comments
-5. Follow DRY principle
-6. Output ONLY code, no explanations
+TypeScript:
+- Types/Interfaces: Separate item (types/user.ts)
+- Classes/Implementations: Separate item (services/user.service.ts)
+- Utilities: Separate items by functional group
 
-Code style:
-- Python: Follow PEP 8, use type hints
-- TypeScript: Use strict types
-- All: Keep functions small (<50 lines)
-"""
+#### File: `src/vivek/prompts/granular_sdet_prompts.py`
 
-CODER_USER_PROMPT_TEMPLATE = """File: {file_path}
-Language: {language}
-Task: {description}
+**5-Phase Test Development (SDET Workflow)**:
 
-Context from related files:
-{context}
+**Phase 1 - Test Fixtures**:
+- Task: Define test data builders, mocks, setup utilities
+- Output: Reusable test infrastructure code
+- Focus: Mocks, factories, fixtures (no test cases)
 
-Generate the complete file content. Output ONLY the code."""
+**Phase 2b - Happy Path Tests**:
+- Task: Write 3-5 success scenario tests
+- Output: Happy path test cases
+- Focus: Main functionality, correct outputs, state changes
 
+**Phase 2c - Edge Case Tests**:
+- Task: Write boundary condition tests
+- Output: Edge case test cases
+- Focus: Empty inputs, null values, limits, special cases
 
-SDET_SYSTEM_PROMPT = """You are an expert SDET (Software Development Engineer in Test). Generate comprehensive tests.
+**Phase 2d - Error Handling Tests**:
+- Task: Write exception and failure scenario tests
+- Output: Error handling test cases
+- Focus: Invalid inputs, dependency failures, exceptions
 
-Requirements:
-1. Use pytest for Python, Jest for TypeScript
-2. Test happy paths and edge cases
-3. Aim for 80%+ coverage
-4. Use descriptive test names
-5. Include fixtures where appropriate
-6. Output ONLY test code, no explanations
+**Phase 2e - Coverage Analysis**:
+- Task: Analyze test coverage and identify gaps
+- Output: Coverage report with recommendations
+- Focus: Coverage metrics, untested paths, improvement suggestions
 
-Test structure:
-- Group related tests in classes
-- One assertion per test (prefer)
-- Test error cases with pytest.raises or expect().toThrow()
-"""
+**Helper Functions**:
+- `build_test_fixtures_prompt(work_item, language, signatures)`
+- `build_happy_path_tests_prompt(work_item, language, fixtures_code)`
+- `build_edge_case_tests_prompt(work_item, language, fixtures_code)`
+- `build_error_handling_tests_prompt(work_item, language, fixtures_code)`
+- `build_test_coverage_prompt(test_output, coverage_report, implementation_files)`
 
-SDET_USER_PROMPT_TEMPLATE = """Test file: {file_path}
-Language: {language}
-Task: {description}
+#### File: `src/vivek/prompts/tdd_workflow_orchestrator.py`
 
-Code to test:
-{code_to_test}
+**TDD Workflow Orchestration** across languages (Go, Python, TypeScript):
 
-Generate comprehensive tests. Output ONLY the test code."""
+**Execution Phases**:
+1. `STRUCT_INTERFACE` - Define types/structs/interfaces
+2. `TEST_FIXTURES` - Create test fixtures
+3. `HAPPY_PATH_TESTS` - Write success tests
+4. `EDGE_CASE_TESTS` - Write boundary tests
+5. `ERROR_HANDLING_TESTS` - Write error tests
+6. `TEST_COVERAGE_ANALYSIS` - Verify coverage
+7. `IMPLEMENTATION` - Implement functions
+8. `TEST_EXECUTION` - Run tests and verify
 
+**TDDWorkflowOrchestrator Class**:
+- `__init__(language, work_item)` - Initialize for language
+- `phase_1_define_structures()` - Generate struct/interface definitions
+- `phase_2a_test_fixtures(signatures)` - Generate test fixtures
+- `phase_2b_happy_path_tests(fixtures_code)` - Generate happy path tests
+- `phase_2c_edge_case_tests(fixtures_code)` - Generate edge case tests
+- `phase_2d_error_handling_tests(fixtures_code)` - Generate error tests
+- `phase_2e_test_coverage_analysis(...)` - Analyze coverage
+- `phase_3_implement(signatures, test_code)` - Implement to pass tests
+- `phase_4_run_tests(...)` - Run and verify tests
+- `get_execution_plan()` - Return ordered execution steps
 
-def build_coder_prompt(work_item, context: str = "") -> dict:
-    """Build coder mode prompt."""
-    return {
-        "system": CODER_SYSTEM_PROMPT,
-        "user": CODER_USER_PROMPT_TEMPLATE.format(
-            file_path=work_item.file_path,
-            language=work_item.language,
-            description=work_item.description,
-            context=context or "No additional context"
-        )
-    }
-
-
-def build_sdet_prompt(work_item, code_to_test: str) -> dict:
-    """Build SDET mode prompt."""
-    return {
-        "system": SDET_SYSTEM_PROMPT,
-        "user": SDET_USER_PROMPT_TEMPLATE.format(
-            file_path=work_item.file_path,
-            language=work_item.language,
-            description=work_item.description,
-            code_to_test=code_to_test
-        )
-    }
-```
-
-### File: `src/vivek/prompts/quality_prompts.py`
-
-```python
-"""Prompts for quality evaluation."""
-
-QUALITY_SYSTEM_PROMPT = """You are a code quality evaluator. Assess code quality objectively.
-
-Evaluation criteria:
-1. Completeness (0.0-1.0): Are all requirements met?
-2. Correctness (0.0-1.0): Is the code syntactically correct?
-
-Output format (JSON only):
-{
-  "completeness": 0.85,
-  "correctness": 1.0,
-  "feedback": [
-    "Missing error handling for network requests",
-    "All type hints present"
-  ]
-}
-"""
-
-QUALITY_USER_PROMPT_TEMPLATE = """Requirements:
-{requirements}
-
-Generated code:
-{code}
-
-Evaluate completeness and correctness. Output ONLY JSON."""
-
-
-def build_quality_prompt(requirements: str, code: str) -> dict:
-    """Build quality evaluation prompt."""
-    return {
-        "system": QUALITY_SYSTEM_PROMPT,
-        "user": QUALITY_USER_PROMPT_TEMPLATE.format(
-            requirements=requirements,
-            code=code
-        )
-    }
-```
+**Workflow Examples** (included in file):
+- Go workflow with structs, table-driven tests
+- Python workflow with dataclasses, pytest fixtures
+- TypeScript workflow with interfaces, Jest mocks
 
 ---
 
-## Part 2: Planner Service
+## Part 2: Planner Service (Updated)
 
-### File: `src/vivek/domain/planning/services/planner_service.py`
+### File: `src/vivek/domain/planning/services/planning_service.py`
 
 ```python
-"""Planner service implementation."""
+"""Planner service with multi-phase interactive workflow."""
 
 import json
 from typing import Optional
 
-from vivek.domain.interfaces.i_planner_service import IPlannerService
+from vivek.domain.interfaces.planner import IPlannerService
 from vivek.domain.planning.models.plan import Plan
 from vivek.domain.models.work_item import WorkItem, ExecutionMode
-from vivek.domain.exceptions.vivek_exceptions import PlanningException
+from vivek.domain.exceptions.exception import PlanningException
 from vivek.infrastructure.llm.llm_provider import LLMProvider
-from vivek.prompts.planner_prompts import build_planner_prompt
-
+from vivek.prompts.multi_phase_planner_prompts import (
+    build_clarification_prompt,
+    build_confirmation_prompt,
+    build_decomposition_prompt,
+)
 
 class PlannerService(IPlannerService):
-    """Service for planning and decomposition."""
+    """Service for multi-phase planning and decomposition."""
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm = llm_provider
@@ -304,44 +258,53 @@ class PlannerService(IPlannerService):
         user_request: str,
         project_context: str
     ) -> Plan:
-        """Create execution plan from user request.
+        """Create execution plan through three interactive phases.
 
         Args:
             user_request: What user wants to implement
             project_context: Project information
 
         Returns:
-            Plan with 3-5 work items
+            Plan with 5-10 work items
 
         Raises:
             PlanningException: If planning fails
+
+        Flow:
+            Phase 1: Clarification - Ask missing requirement questions
+            Phase 2: Confirmation - Validate understanding (may loop back to Phase 1)
+            Phase 3: Decomposition - Generate work items using TDD pattern
         """
         try:
-            # Build prompt
-            prompts = build_planner_prompt(user_request, project_context)
-
-            # Call LLM
-            response = await self.llm.generate(
-                system_prompt=prompts["system"],
-                user_prompt=prompts["user"]
+            # PHASE 1: CLARIFICATION
+            clarification = await self._clarify_requirements(
+                user_request, project_context
             )
 
-            # Parse response
-            plan_data = json.loads(response)
+            # PHASE 2: CONFIRMATION
+            confirmation = await self._confirm_understanding(
+                user_request, project_context, clarification
+            )
+
+            # Loop back if not confirmed
+            max_loops = 3
+            loop_count = 0
+            while not confirmation.get("confirmed", True) and loop_count < max_loops:
+                clarification = await self._clarify_requirements(
+                    user_request, project_context
+                )
+                confirmation = await self._confirm_understanding(
+                    user_request, project_context, clarification
+                )
+                loop_count += 1
+
+            # PHASE 3: DECOMPOSITION
+            plan_data = await self._decompose_into_items(
+                project_context, confirmation
+            )
 
             # Convert to WorkItem objects
-            work_items = []
-            for item_data in plan_data["work_items"]:
-                work_item = WorkItem(
-                    id=item_data["id"],
-                    file_path=item_data["file_path"],
-                    description=item_data["description"],
-                    mode=ExecutionMode(item_data["mode"]),
-                    language=item_data.get("language", "python"),
-                    file_status=item_data.get("file_status", "new"),
-                    dependencies=item_data.get("dependencies", [])
-                )
-                work_items.append(work_item)
+            work_items = self._parse_work_items(plan_data)
 
             # Validate plan
             self._validate_plan(work_items)
@@ -353,414 +316,220 @@ class PlannerService(IPlannerService):
         except Exception as e:
             raise PlanningException(f"Planning failed: {e}")
 
+    async def _clarify_requirements(
+        self, user_request: str, project_context: str
+    ) -> dict:
+        """Phase 1: Ask clarifying questions if needed."""
+        prompts = build_clarification_prompt(user_request, project_context)
+        response = self.llm.generate(
+            system_prompt=prompts["system"],
+            prompt=prompts["user"]
+        )
+        return json.loads(response)
+
+    async def _confirm_understanding(
+        self, user_request: str, project_context: str, clarifications: str
+    ) -> dict:
+        """Phase 2: Validate understanding of requirements."""
+        clarifications_str = json.dumps(clarifications)
+        prompts = build_confirmation_prompt(
+            user_request, project_context, clarifications_str
+        )
+        response = self.llm.generate(
+            system_prompt=prompts["system"],
+            prompt=prompts["user"]
+        )
+        return json.loads(response)
+
+    async def _decompose_into_items(
+        self, project_context: str, confirmed_understanding: dict
+    ) -> dict:
+        """Phase 3: Decompose into work items using TDD pattern."""
+        confirmed_str = json.dumps(confirmed_understanding)
+        prompts = build_decomposition_prompt(project_context, confirmed_str)
+        response = self.llm.generate(
+            system_prompt=prompts["system"],
+            prompt=prompts["user"]
+        )
+        return json.loads(response)
+
+    def _parse_work_items(self, plan_data: dict) -> list:
+        """Convert plan data to WorkItem objects."""
+        work_items = []
+        for item_data in plan_data.get("work_items", []):
+            work_item = WorkItem(
+                id=item_data["id"],
+                file_path=item_data["file_path"],
+                description=item_data["description"],
+                mode=ExecutionMode(item_data["mode"]),
+                language=item_data.get("language", "python"),
+                file_status=item_data.get("file_status", "new"),
+                dependencies=item_data.get("dependencies", []),
+            )
+            work_items.append(work_item)
+        return work_items
+
     def _validate_plan(self, work_items: list) -> None:
         """Validate plan."""
         if not work_items:
             raise PlanningException("Plan must have at least one work item")
 
-        if len(work_items) > 5:
-            raise PlanningException("Plan cannot have more than 5 work items")
+        if len(work_items) > 20:
+            raise PlanningException("Plan cannot have more than 20 work items")
 
         # Check for circular dependencies
         self._check_circular_dependencies(work_items)
 
     def _check_circular_dependencies(self, work_items: list) -> None:
         """Check for circular dependencies."""
-        # Simple implementation: check each item doesn't depend on itself
         item_ids = {item.id for item in work_items}
 
         for item in work_items:
             if item.id in item.dependencies:
-                raise PlanningException(
-                    f"Circular dependency detected: {item.id}"
-                )
+                raise PlanningException(f"Circular dependency detected: {item.id}")
 
             # Check dependencies exist
             for dep_id in item.dependencies:
                 if dep_id not in item_ids:
-                    raise PlanningException(
-                        f"Unknown dependency: {dep_id} in {item.id}"
-                    )
+                    raise PlanningException(f"Unknown dependency: {dep_id} in {item.id}")
 ```
+
+**Key Changes**:
+- Three-phase interactive workflow (clarify → confirm → decompose)
+- Loop back to clarification if confirmation fails (max 3 loops)
+- Increased work items limit from 5 to 20 (due to 5-phase SDET)
+- Clear separation of concerns with phase-specific methods
+- Imports from refactored `multi_phase_planner_prompts`
 
 ---
 
-## Part 3: Executor Service
+## Part 3: Executor Service (Updated for TDD Phases)
 
-### File: `src/vivek/domain/execution/modes/base_mode.py`
+The executor service now needs to handle granular SDET phases. Each SDET work item has a `sdet_phase` field.
 
-```python
-"""Base execution mode."""
+### File: `src/vivek/domain/execution/services/executor_service.py`
 
-from abc import ABC, abstractmethod
-
-from vivek.domain.models.work_item import WorkItem
-from vivek.domain.models.execution_result import ExecutionResult
-
-
-class BaseMode(ABC):
-    """Base class for execution modes."""
-
-    @abstractmethod
-    async def execute(
-        self,
-        work_item: WorkItem,
-        context: dict
-    ) -> ExecutionResult:
-        """Execute work item.
-
-        Args:
-            work_item: Work item to execute
-            context: Execution context
-
-        Returns:
-            Execution result
-        """
-        pass
-
-    @abstractmethod
-    def validate_output(self, code: str, language: str) -> list:
-        """Validate generated code.
-
-        Args:
-            code: Generated code
-            language: Programming language
-
-        Returns:
-            List of validation errors (empty if valid)
-        """
-        pass
-```
-
-### File: `src/vivek/domain/execution/modes/coder_mode.py`
+**Updated to handle SDET phases**:
 
 ```python
-"""Coder mode implementation."""
+"""Executor service with support for TDD phases."""
 
-import ast
+from typing import Dict
+from enum import Enum
 
-from vivek.domain.execution.modes.base_mode import BaseMode
-from vivek.domain.models.work_item import WorkItem
+from vivek.domain.models.work_item import WorkItem, ExecutionMode
 from vivek.domain.models.execution_result import ExecutionResult
 from vivek.infrastructure.llm.llm_provider import LLMProvider
-from vivek.prompts.executor_prompts import build_coder_prompt
+from vivek.prompts.tdd_workflow_orchestrator import TDDWorkflowOrchestrator
 
-
-class CoderMode(BaseMode):
-    """Coder mode - generates implementation code."""
+class ExecutorService:
+    """Service for executing work items with TDD workflow."""
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm = llm_provider
 
-    async def execute(
-        self,
-        work_item: WorkItem,
-        context: dict
-    ) -> ExecutionResult:
-        """Execute work item in coder mode."""
-
-        # Build prompt
-        prompts = build_coder_prompt(
-            work_item,
-            context=context.get("related_files", "")
-        )
-
-        # Generate code
-        code = await self.llm.generate(
-            system_prompt=prompts["system"],
-            user_prompt=prompts["user"]
-        )
-
-        # Validate
-        errors = self.validate_output(code, work_item.language)
-
-        # Create result
-        result = ExecutionResult(
-            work_item_id=work_item.id,
-            success=len(errors) == 0,
-            code=code,
-            file_path=work_item.file_path,
-            errors=errors
-        )
-
-        return result
-
-    def validate_output(self, code: str, language: str) -> list:
-        """Validate generated code."""
-        errors = []
-
-        if language == "python":
-            try:
-                ast.parse(code)
-            except SyntaxError as e:
-                errors.append(f"Syntax error at line {e.lineno}: {e.msg}")
-
-        return errors
-```
-
-### File: `src/vivek/domain/execution/modes/sdet_mode.py`
-
-```python
-"""SDET mode implementation."""
-
-import ast
-
-from vivek.domain.execution.modes.base_mode import BaseMode
-from vivek.domain.models.work_item import WorkItem
-from vivek.domain.models.execution_result import ExecutionResult
-from vivek.infrastructure.llm.llm_provider import LLMProvider
-from vivek.infrastructure.file_operations.file_service import FileService
-from vivek.prompts.executor_prompts import build_sdet_prompt
-
-
-class SDETMode(BaseMode):
-    """SDET mode - generates tests."""
-
-    def __init__(self, llm_provider: LLMProvider, file_service: FileService):
-        self.llm = llm_provider
-        self.file_service = file_service
-
-    async def execute(
-        self,
-        work_item: WorkItem,
-        context: dict
-    ) -> ExecutionResult:
-        """Execute work item in SDET mode."""
-
-        # Get code to test from dependencies
-        code_to_test = context.get("code_to_test", "")
-
-        if not code_to_test:
-            # Try to read from file if it exists
-            if work_item.dependencies:
-                # Get file path from first dependency
-                dep_file = context.get("dependency_files", {}).get(
-                    work_item.dependencies[0]
-                )
-                if dep_file and self.file_service.file_exists(dep_file):
-                    code_to_test = self.file_service.read_file(dep_file)
-
-        # Build prompt
-        prompts = build_sdet_prompt(work_item, code_to_test)
-
-        # Generate tests
-        test_code = await self.llm.generate(
-            system_prompt=prompts["system"],
-            user_prompt=prompts["user"]
-        )
-
-        # Validate
-        errors = self.validate_output(test_code, work_item.language)
-
-        # Create result
-        result = ExecutionResult(
-            work_item_id=work_item.id,
-            success=len(errors) == 0,
-            code=test_code,
-            file_path=work_item.file_path,
-            errors=errors
-        )
-
-        return result
-
-    def validate_output(self, code: str, language: str) -> list:
-        """Validate generated test code."""
-        errors = []
-
-        if language == "python":
-            try:
-                ast.parse(code)
-                # Check for pytest
-                if "import pytest" not in code and "from pytest" not in code:
-                    errors.append("Warning: No pytest import found")
-            except SyntaxError as e:
-                errors.append(f"Syntax error at line {e.lineno}: {e.msg}")
-
-        return errors
-```
-
-### File: `src/vivek/domain/execution/services/executor_service.py`
-
-```python
-"""Executor service implementation."""
-
-from typing import Dict
-
-from vivek.domain.interfaces.i_executor_service import IExecutorService
-from vivek.domain.models.work_item import WorkItem, ExecutionMode
-from vivek.domain.models.execution_result import ExecutionResult
-from vivek.domain.execution.modes.base_mode import BaseMode
-from vivek.domain.execution.modes.coder_mode import CoderMode
-from vivek.domain.execution.modes.sdet_mode import SDETMode
-from vivek.domain.exceptions.vivek_exceptions import ExecutionException
-
-
-class ExecutorService(IExecutorService):
-    """Service for executing work items."""
-
-    def __init__(
-        self,
-        coder_mode: CoderMode,
-        sdet_mode: SDETMode
-    ):
-        self.modes: Dict[ExecutionMode, BaseMode] = {
-            ExecutionMode.CODER: coder_mode,
-            ExecutionMode.SDET: sdet_mode
-        }
-
     async def execute(self, work_item: WorkItem) -> ExecutionResult:
-        """Execute a work item.
+        """Execute a work item based on its mode and SDET phase.
 
         Args:
             work_item: Work item to execute
 
         Returns:
-            Execution result
+            Execution result with generated code
 
         Raises:
             ExecutionException: If execution fails
         """
-        try:
-            # Get appropriate mode
-            mode = self.modes.get(work_item.mode)
-            if not mode:
-                raise ExecutionException(
-                    f"Unknown execution mode: {work_item.mode}"
-                )
+        orchestrator = TDDWorkflowOrchestrator(work_item.language, work_item)
 
-            # Build context (simplified for now)
-            context = {}
+        if work_item.mode == ExecutionMode.CODER:
+            return await self._execute_coder(work_item, orchestrator)
+        elif work_item.mode == ExecutionMode.SDET:
+            return await self._execute_sdet(work_item, orchestrator)
+        else:
+            raise ValueError(f"Unsupported execution mode: {work_item.mode}")
 
-            # Execute
-            result = await mode.execute(work_item, context)
+    async def _execute_coder(
+        self, work_item: WorkItem, orchestrator: TDDWorkflowOrchestrator
+    ) -> ExecutionResult:
+        """Execute coder mode (struct definition or implementation)."""
+        # TODO: Call appropriate phase method from orchestrator
+        # For now, placeholder
+        return ExecutionResult(
+            work_item_id=work_item.id,
+            success=False,
+            errors=["Coder execution not yet implemented"]
+        )
 
-            return result
+    async def _execute_sdet(
+        self, work_item: WorkItem, orchestrator: TDDWorkflowOrchestrator
+    ) -> ExecutionResult:
+        """Execute SDET mode (one of 5 test phases)."""
+        # TODO: Route to appropriate SDET phase method
+        # sdet_phase: phase_1_fixtures, phase_2b_happy_path, phase_2c_edge_cases,
+        #            phase_2d_error_handling, phase_2e_coverage_analysis
 
-        except Exception as e:
-            # Return failed result
-            return ExecutionResult(
-                work_item_id=work_item.id,
-                success=False,
-                errors=[str(e)]
-            )
+        return ExecutionResult(
+            work_item_id=work_item.id,
+            success=False,
+            errors=["SDET execution not yet implemented"]
+        )
 ```
+
+**Implementation Notes**:
+- Uses `TDDWorkflowOrchestrator` to generate prompts
+- Routes to appropriate phase method based on work item mode/SDET phase
+- Needs integration with LLMProvider for actual code generation
 
 ---
 
 ## Part 4: Quality Service
 
+Quality evaluation remains largely the same, evaluating complete generated code:
+
 ### File: `src/vivek/domain/quality/services/quality_service.py`
 
-```python
-"""Quality evaluation service."""
+The quality service evaluates:
+1. **Completeness** (0.0-1.0): Are all requirements met?
+2. **Correctness** (0.0-1.0): Is the code syntactically correct?
+3. **Feedback**: Specific improvement suggestions
 
-import json
-from typing import List
-
-from vivek.domain.interfaces.i_quality_service import IQualityService
-from vivek.domain.models.execution_result import ExecutionResult
-from vivek.domain.models.quality_score import QualityScore
-from vivek.domain.exceptions.vivek_exceptions import QualityException
-from vivek.infrastructure.llm.llm_provider import LLMProvider
-from vivek.prompts.quality_prompts import build_quality_prompt
-
-
-class QualityService(IQualityService):
-    """Service for evaluating output quality."""
-
-    def __init__(self, llm_provider: LLMProvider, threshold: float = 0.75):
-        self.llm = llm_provider
-        self.threshold = threshold
-
-    async def evaluate(
-        self,
-        results: List[ExecutionResult]
-    ) -> QualityScore:
-        """Evaluate quality of execution results.
-
-        Args:
-            results: List of execution results
-
-        Returns:
-            Quality score
-        """
-        try:
-            # Check for execution errors first
-            if any(not r.success for r in results):
-                return QualityScore(
-                    overall=0.0,
-                    completeness=0.0,
-                    correctness=0.0,
-                    feedback=["Execution failed for some work items"],
-                    passed=False
-                )
-
-            # Aggregate all code
-            all_code = "\n\n".join(
-                f"# {r.file_path}\n{r.code}"
-                for r in results if r.code
-            )
-
-            # Build requirements from work items
-            requirements = "\n".join(
-                f"- {r.work_item_id}: Generated code for {r.file_path}"
-                for r in results
-            )
-
-            # Build prompt
-            prompts = build_quality_prompt(requirements, all_code)
-
-            # Call LLM
-            response = await self.llm.generate(
-                system_prompt=prompts["system"],
-                user_prompt=prompts["user"]
-            )
-
-            # Parse response
-            quality_data = json.loads(response)
-
-            # Calculate overall score
-            completeness = quality_data["completeness"]
-            correctness = quality_data["correctness"]
-            overall = (completeness + correctness) / 2
-
-            # Create score
-            score = QualityScore(
-                overall=overall,
-                completeness=completeness,
-                correctness=correctness,
-                feedback=quality_data.get("feedback", []),
-                passed=overall >= self.threshold
-            )
-
-            return score
-
-        except Exception as e:
-            raise QualityException(f"Quality evaluation failed: {e}")
+Output format (JSON):
+```json
+{
+  "completeness": 0.85,
+  "correctness": 1.0,
+  "feedback": [
+    "Missing error handling for network requests",
+    "All type hints present"
+  ],
+  "passed": true  // if (completeness + correctness) / 2 >= threshold
+}
 ```
 
 ---
 
 ## Part 5: Dependency Resolution
 
+Using topological sort (Kahn's algorithm) to determine execution order:
+
 ### File: `src/vivek/domain/planning/services/dependency_resolver.py`
 
 ```python
-"""Dependency resolution service."""
+"""Dependency resolution using topological sort."""
 
-from typing import List, Dict, Set
+from typing import List
 from collections import defaultdict, deque
 
 from vivek.domain.models.work_item import WorkItem
-from vivek.domain.exceptions.vivek_exceptions import PlanningException
-
+from vivek.domain.exceptions.exception import PlanningException
 
 class DependencyResolver:
     """Resolve work item dependencies and determine execution order."""
 
     @staticmethod
     def resolve(work_items: List[WorkItem]) -> List[WorkItem]:
-        """Resolve dependencies using topological sort.
+        """Resolve dependencies using topological sort (Kahn's algorithm).
 
         Args:
             work_items: List of work items with dependencies
@@ -771,23 +540,19 @@ class DependencyResolver:
         Raises:
             PlanningException: If circular dependency detected
         """
-        # Build dependency graph
         graph = defaultdict(list)
         in_degree = defaultdict(int)
         item_map = {item.id: item for item in work_items}
 
-        # Initialize
         for item in work_items:
             if item.id not in in_degree:
                 in_degree[item.id] = 0
 
-        # Build graph
         for item in work_items:
             for dep_id in item.dependencies:
                 graph[dep_id].append(item.id)
                 in_degree[item.id] += 1
 
-        # Topological sort (Kahn's algorithm)
         queue = deque([
             item_id for item_id in in_degree if in_degree[item_id] == 0
         ])
@@ -797,13 +562,11 @@ class DependencyResolver:
             current_id = queue.popleft()
             sorted_items.append(item_map[current_id])
 
-            # Reduce in-degree for neighbors
             for neighbor_id in graph[current_id]:
                 in_degree[neighbor_id] -= 1
                 if in_degree[neighbor_id] == 0:
                     queue.append(neighbor_id)
 
-        # Check for cycles
         if len(sorted_items) != len(work_items):
             raise PlanningException("Circular dependency detected")
 
@@ -812,30 +575,101 @@ class DependencyResolver:
 
 ---
 
+## Implementation Strategy
+
+### Phase 1: Core Prompt Architecture
+- [x] Create `prompt_architecture.py` with factory pattern
+- [x] Create `multi_phase_planner_prompts.py` with 3-phase workflow
+- [x] Create `granular_sdet_prompts.py` with 5-phase test workflow
+- [x] Create `tdd_workflow_orchestrator.py` for orchestration
+
+### Phase 2: Service Implementation
+- [ ] Update `planning_service.py` to use multi-phase approach
+- [ ] Update `executor_service.py` to handle SDET phases
+- [ ] Update quality service for comprehensive evaluation
+- [ ] Implement dependency resolver with topological sort
+
+### Phase 3: Integration & Testing
+- [ ] Test clarification phase with user mocks
+- [ ] Test confirmation phase with loopback scenarios
+- [ ] Test decomposition with real work item generation
+- [ ] Test TDD workflow orchestration
+- [ ] Test dependency resolution
+- [ ] 40+ unit tests (mock LLM responses)
+
+---
+
 ## Summary Checklist
 
 ### Week 3-5 Deliverables
 
-- [ ] Prompts implemented:
-  - [ ] Planner prompts
-  - [ ] Coder mode prompts
-  - [ ] SDET mode prompts
-  - [ ] Quality prompts
-- [ ] Services implemented:
-  - [ ] PlannerService
-  - [ ] ExecutorService
-  - [ ] CoderMode
-  - [ ] SDETMode
-  - [ ] QualityService
-  - [ ] DependencyResolver
-- [ ] 40+ unit tests passing
-- [ ] Mock LLM provider for tests
+Prompt Architecture:
+- [x] PromptFactory and ABC pattern
+- [x] Three-phase planner prompts
+- [x] Five-phase SDET prompts
+- [x] TDD workflow orchestrator
 
-### Ready for Workstream 3?
+Services:
+- [ ] Updated PlannerService (3 phases with loopback)
+- [ ] Updated ExecutorService (SDET phase routing)
+- [ ] Quality service (completeness + correctness)
+- [ ] DependencyResolver (topological sort)
 
-✅ All services implemented
-✅ Prompts tested with real LLM
-✅ Dependency resolution working
-✅ Tests passing (85%+ coverage)
+Testing:
+- [ ] 40+ unit tests with mock LLM
+- [ ] Clarification phase tests
+- [ ] Confirmation phase tests
+- [ ] Decomposition phase tests
+- [ ] SDET workflow tests
+- [ ] Dependency resolution tests
+
+---
+
+## User Interaction Points
+
+Unlike the original single-phase approach, the new system requires user input at two critical points:
+
+### 1. Clarification Feedback (Phase 1 Output)
+```json
+{
+  "needs_clarification": true,
+  "questions": [
+    "Do you need JWT or OAuth?",
+    "Single-tenant or multi-tenant?"
+  ],
+  "reason": "Authentication strategy and scale affect architecture"
+}
+```
+
+**User Action**: Answer clarifying questions or confirm if all clear.
+
+### 2. Confirmation Feedback (Phase 2 Output)
+```json
+{
+  "understanding": [
+    "• Building JWT-based auth system",
+    "• Single-tenant architecture",
+    "• Support email/password login"
+  ],
+  "confirmed": false,
+  "concerns": "No database specified - using in-memory?"
+}
+```
+
+**User Action**: Confirm understanding or provide corrections (loops back to Phase 1).
+
+### 3. Final Plan (Phase 3 Output)
+Once confirmed, the system generates the complete work plan with all dependencies and TDD phases ready for execution.
+
+---
+
+## Next Steps
+
+**Workstream 3: Orchestration** will implement:
+- Execution orchestration across work items
+- Dependency resolution and parallel execution
+- Inter-work-item context passing
+- Test execution and verification
+- Plan monitoring and error handling
 
 **Next**: [Workstream 3: Orchestration](WORKSTREAM_3_ORCHESTRATION.md)

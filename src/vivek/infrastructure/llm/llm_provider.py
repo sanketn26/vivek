@@ -14,7 +14,7 @@ class LLMProvider(ABC):
         self.model_name = model_name
 
     @abstractmethod
-    def generate(self, prompt: str, temperature: float = 0.7) -> str:
+    def generate(self, system_prompt: str, prompt: str, temperature: float = 0.7) -> str:
         """Generate text from prompt."""
         pass
 
